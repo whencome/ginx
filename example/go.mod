@@ -1,4 +1,4 @@
-module github.com/whencome/ginx/examples
+module github.com/whencome/ginx/example
 
 go 1.18
 
