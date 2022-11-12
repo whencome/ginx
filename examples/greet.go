@@ -8,7 +8,7 @@ import (
 )
 
 type GreetRequest struct {
-	Name string `form:"name" label:"姓名" binding:"required"`
+	Name string `form:"name" label:"姓名" binding:"required" binding:"required"`
 }
 
 func GreetLogic(c *gin.Context, r api.Request) (api.Response, error) {
