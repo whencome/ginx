@@ -1,11 +1,11 @@
 package ginx
 
 import (
-    "ginx/api"
-    "ginx/server"
-    "ginx/types"
-    "ginx/view"
     "github.com/gin-gonic/gin"
+    "github.com/whencome/ginx/api"
+    "github.com/whencome/ginx/server"
+    "github.com/whencome/ginx/types"
+    "github.com/whencome/ginx/view"
 )
 
 // UseApiResponser 注册API Responser

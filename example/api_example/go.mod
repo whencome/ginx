@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.8.1
-	github.com/whencome/ginx v0.0.0-20221112092049-b3856911cee3
+	github.com/whencome/ginx latest
 )
 
 require (

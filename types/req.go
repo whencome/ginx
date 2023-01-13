@@ -1,8 +1,8 @@
 package types
 
 import (
-    "ginx/view"
     "github.com/gin-gonic/gin"
+    "github.com/whencome/ginx/view"
     "reflect"
 )
 

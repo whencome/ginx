@@ -1,8 +1,8 @@
 package api
 
 import (
-    "ginx/types"
     "github.com/gin-gonic/gin"
+    "github.com/whencome/ginx/types"
     "net/http"
 )
 

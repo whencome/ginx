@@ -2,7 +2,7 @@ package view
 
 import (
     "fmt"
-    "ginx/types"
+    "github.com/whencome/ginx/types"
     "runtime/debug"
 
     "github.com/gin-gonic/contrib/sessions"

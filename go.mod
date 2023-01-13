@@ -1,11 +1,10 @@
-module ginx
+module github.com/whencome/ginx
 
 go 1.18
 
 require (
 	github.com/gin-gonic/contrib v0.0.0-20221130124618-7e01895a63f2
 	github.com/gin-gonic/gin v1.8.1
-	github.com/whencome/ginx v0.0.0-20221112112628-49fc461c08fb
 )
 
 require (

@@ -1,8 +1,8 @@
 package view
 
 import (
-    "ginx/types"
     "github.com/gin-gonic/gin"
+    "github.com/whencome/ginx/types"
 )
 
 // NewHandler 创建一个页面处理方法
