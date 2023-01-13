@@ -16,8 +16,11 @@ func getResponser() types.Responser {
     return responser
 }
 
+// HandlerFunc the logic to handle the api request
+type HandlerFunc func(c *gin.Context, r types.Request) (types.Response, error)
+
 // NewHandler create a new gin.HandlerFunc
-func NewHandler(r types.Request, f types.ApiLogicFunc) gin.HandlerFunc {
+func NewHandler(r types.Request, f HandlerFunc) gin.HandlerFunc {
     return func(c *gin.Context) {
         if f == nil {
             getResponser().Response(c, http.StatusNotImplemented, "service not implemented")

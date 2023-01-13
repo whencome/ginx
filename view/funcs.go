@@ -5,8 +5,11 @@ import (
     "github.com/whencome/ginx/types"
 )
 
+// HandlerFunc the logic to handle the page request
+type HandlerFunc func(c *gin.Context, p *Page, r types.Request) error
+
 // NewHandler 创建一个页面处理方法
-func NewHandler(t string, r types.Request, f types.PageLogicFunc) gin.HandlerFunc {
+func NewHandler(t string, r types.Request, f HandlerFunc) gin.HandlerFunc {
     return func(c *gin.Context) {
         p := NewPage(c, t)
         if f == nil {

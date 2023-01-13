@@ -19,11 +19,11 @@ func NewServer(opts *server.Options) *server.HTTPServer {
 }
 
 // NewApiHandler create a new gin.HandlerFunc
-func NewApiHandler(r types.Request, l types.ApiLogicFunc) gin.HandlerFunc {
+func NewApiHandler(r types.Request, l api.HandlerFunc) gin.HandlerFunc {
     return api.NewHandler(r, l)
 }
 
 // NewPageHandler 创建一个Page处理对象
-func NewPageHandler(r types.Request, t string, l types.PageLogicFunc) gin.HandlerFunc {
+func NewPageHandler(r types.Request, t string, l view.HandlerFunc) gin.HandlerFunc {
     return view.NewHandler(t, r, l)
 }

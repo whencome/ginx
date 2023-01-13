@@ -1,8 +1,6 @@
 package types
 
 import (
-    "github.com/gin-gonic/gin"
-    "github.com/whencome/ginx/view"
     "reflect"
 )
 
@@ -16,12 +14,6 @@ type ValidateableRequest interface {
 
 // Response any response send to client
 type Response interface{}
-
-// ApiLogicFunc the logic to handle the api request
-type ApiLogicFunc func(c *gin.Context, r Request) (Response, error)
-
-// PageLogicFunc the logic to handle the page request
-type PageLogicFunc func(c *gin.Context, p *view.Page, r Request) error
 
 // NewRequest create a new request by the given request
 func NewRequest(r Request) interface{} {
