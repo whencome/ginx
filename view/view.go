@@ -103,13 +103,19 @@ func renderHtml(w http.ResponseWriter, name string, files []string, v interface{
     // 设置header
     w.Header().Set("Content-Type", "text/html; charset=utf-8")
     // 解析模板文件
-    t, e := template.New(name).Funcs(funcMaps).ParseFiles(files...)
+    t := template.New(name)
+    if len(funcMaps) > 0 {
+        t.Funcs(funcMaps)
+    }
+    t, e := t.ParseFiles(files...)
     if e != nil {
+        log.Printf("parse template files failed: %s", e)
         return e
     }
     // 输出内容
     e = t.Execute(w, v)
     if e != nil {
+        log.Printf("template execute failed: %s", e)
         return e
     }
     return nil
@@ -142,8 +148,8 @@ func RenderPage(w http.ResponseWriter, p *Page) error {
     return renderHtml(w, p.Tpl, tmpTplFiles, p)
 }
 
-// ShowPage 根据Page信息渲染页面
-func ShowPage(w http.ResponseWriter, p *Page) {
+// Show 根据Page信息渲染页面
+func Show(w http.ResponseWriter, p *Page) {
     err := RenderPage(w, p)
     if err != nil {
         p.AddError(err)
@@ -154,10 +160,11 @@ func ShowPage(w http.ResponseWriter, p *Page) {
     }
 }
 
-// ShowPageDirect 根据Page信息渲染页面
-func ShowPageDirect(w http.ResponseWriter, p *Page) {
+// ShowDirect 根据Page信息渲染页面
+func ShowDirect(w http.ResponseWriter, p *Page) error {
     err := RenderDirect(w, p.Tpl, []string{p.Tpl}, p)
     if err != nil {
         log.Printf("render page failed: %s", err)
     }
+    return err
 }

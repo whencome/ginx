@@ -1,0 +1,7 @@
+{{ define "test/test"}}
+    {{ template "template/public" . }}
+{{ end }}
+
+{{ define "content"}}
+    <p>Hello, {{.Data.Name}}!</p>
+{{ end }}

@@ -3,7 +3,10 @@ package view
 import (
     "fmt"
     "github.com/whencome/ginx/types"
+    "net/http"
+    "net/url"
     "runtime/debug"
+    "strings"
 
     "github.com/gin-gonic/contrib/sessions"
     "github.com/gin-gonic/gin"
@@ -40,6 +43,7 @@ func (pe *PageError) Error() string {
 type Page struct {
     Ctx     *gin.Context
     Request types.Request          // 页面请求数据
+    Params  url.Values             // 请求参数列表
     Tpl     string                 `json:"tpl"`    // 定义模板
     Title   string                 `json:"title"`  // 页面标题
     Data    map[string]interface{} `json:"data"`   // 页面数据，可能会向用户展示
@@ -55,6 +59,7 @@ func NewPage(c *gin.Context, tpl string) *Page {
         Data: make(map[string]interface{}),
         Sess: make(map[string]interface{}),
     }
+    p.init()
     return p
 }
 
@@ -67,11 +72,19 @@ func NewPageWithData(c *gin.Context, tpl string, data map[string]interface{}) *P
         Sess:   make(map[string]interface{}),
         Errors: make([]*PageError, 0),
     }
+    p.init()
     return p
 }
 
 // init 页面初始化
 func (p *Page) init() {
+    // init request params
+    if p.Ctx.Request.Method == http.MethodGet {
+        p.Params = p.Ctx.Request.Form
+    } else {
+        p.Params = p.Ctx.Request.PostForm
+    }
+    // customize init func
     if initPageFunc == nil {
         return
     }
@@ -82,6 +95,21 @@ func (p *Page) init() {
     for k, v := range sess {
         p.Sess[k] = v
     }
+}
+
+// ContentType 获取请求的Content-Type
+func (p *Page) ContentType() string {
+    contentTypes := p.Ctx.Request.Header["Content-Type"]
+    if len(contentTypes) == 0 {
+        return "application/x-www-form-urlencoded"
+    }
+    contentType := contentTypes[0]
+    if strings.Contains(contentType, ";") {
+        pos := strings.Index(contentType, ";")
+        contentType = contentType[0:pos]
+    }
+    contentType = strings.TrimSpace(strings.ToLower(contentType))
+    return contentType
 }
 
 // Session 获取会话信息
@@ -134,19 +162,19 @@ func (p *Page) HasError() bool {
 }
 
 // Show 显示页面内容
-func (p *Page) Show() {
-    ShowPage(p.Ctx.Writer, p)
+func (p *Page) Show() error {
+    return RenderPage(p.Ctx.Writer, p)
 }
 
 // ShowWithError 将错误添加进页面并显示
-func (p *Page) ShowWithError(e interface{}) {
+func (p *Page) ShowWithError(e interface{}) error {
     p.AddError(fmt.Errorf("%s", e))
-    p.Show()
+    return p.Show()
 }
 
 // ShowDirect 显示页面内容
 func (p *Page) ShowDirect() {
-    ShowPageDirect(p.Ctx.Writer, p)
+    ShowDirect(p.Ctx.Writer, p)
 }
 
 // ShowDirectWithError 显示页面内容

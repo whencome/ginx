@@ -1,0 +1,20 @@
+{{define "template/public"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}}</title>
+</head>
+<body>
+    {{ template "template/navbar" . }}
+    <div id="content">
+        {{ $errNum := len .Errors }}
+        {{ if gt $errNum 0 }}
+            {{ template "template/error" . }}
+        {{ else }}
+            {{block "content" .}}{{end}}
+        {{ end }}
+    </div>
+</body>
+</html>
+{{end}}

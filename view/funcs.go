@@ -9,11 +9,14 @@ import (
 type HandlerFunc func(c *gin.Context, p *Page, r types.Request) error
 
 // NewHandler 创建一个页面处理方法
+// t - template of current page
+// r - request
+// f - handler func
 func NewHandler(t string, r types.Request, f HandlerFunc) gin.HandlerFunc {
     return func(c *gin.Context) {
         p := NewPage(c, t)
         if f == nil {
-            p.ShowWithError("service not implemented")
+            _ = p.ShowWithError("service not implemented")
             return
         }
         // parse && validate request
@@ -21,22 +24,22 @@ func NewHandler(t string, r types.Request, f HandlerFunc) gin.HandlerFunc {
         if r != nil {
             req = types.NewRequest(r)
             if err := c.ShouldBind(req); err != nil {
-                p.ShowWithError(err)
+                _ = p.ShowWithError(err)
                 return
             }
             if vr, ok := req.(types.ValidateableRequest); ok {
                 if err := vr.Validate(); err != nil {
-                    p.ShowWithError(err)
+                    _ = p.ShowWithError(err)
                     return
                 }
             }
         }
         err := f(c, p, req)
         if err != nil {
-            p.ShowWithError(err)
+            _ = p.ShowWithError(err)
             return
         }
-        p.Show()
+        _ = p.Show()
         return
     }
 }

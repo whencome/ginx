@@ -1,0 +1,45 @@
+{{define "template/error"}}
+    {{$errNum := len .Errors}}
+    {{if gt $errNum 0}}
+        <ul>
+            {{range $i, $e := .Errors}}
+            <li><h3 style="color: red;">{{printf "%s" $e.Message}}</h3>
+                <br />
+                <pre>{{printf "%s" $e.Trace}}</pre>
+            </li>
+            {{end}}
+        </ul>
+        <hr />
+        <h3>{{.Ctx.Request.Method}}&nbsp;&nbsp;{{.Ctx.Request.RequestURI}}</h3>
+        {{/*show header info*/}}
+        {{$headerCount := len .Ctx.Request.Header}}
+        {{if gt $headerCount 0}}
+        <p>Headers:</p>
+        <ul>
+            {{range $k, $v := .Ctx.Request.Header}}
+            <li><strong>{{$k}}</strong>:{{printf "%+v" $v}}</li>
+            {{end}}
+        </ul>
+        {{end}}
+        {{/*show cookie info*/}}
+        {{$cookieCount := len .Cookies}}
+        {{if gt $cookieCount 0}}
+        <p>Cookies:</p>
+        <ul>
+            {{range $i, $c := .Cookies}}
+            <li><strong>{{$c.Name}}</strong>:{{$c.Value}}</li>
+            {{end}}
+        </ul>
+        {{end}}
+        {{/*show request params*/}}
+        {{$paramCount := len .Params}}
+        {{if gt $paramCount 0}}
+        <p>Params:</p>
+        <ul>
+            {{range $k, $v := .Params}}
+            <li><strong>{{$k}}</strong>:{{$v}}</li>
+            {{end}}
+        </ul>
+        {{end}}
+    {{end}}
+{{end}}
