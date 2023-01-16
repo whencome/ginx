@@ -9,7 +9,7 @@ import (
 )
 
 // UseApiResponser 注册API Responser
-func UseApiResponser(r types.Responser) {
+func UseApiResponser(r types.ApiResponser) {
     api.UseResponser(r)
 }
 
