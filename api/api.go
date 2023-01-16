@@ -7,11 +7,11 @@ import (
 )
 
 // responser response result to client
-var responser types.Responser
+var responser types.ApiResponser
 
-func getResponser() types.Responser {
+func getResponser() types.ApiResponser {
     if responser == nil {
-        return new(types.DefaultResponser)
+        return new(types.DefaultApiResponser)
     }
     return responser
 }
@@ -52,6 +52,6 @@ func NewHandler(r types.Request, f HandlerFunc) gin.HandlerFunc {
 }
 
 // UseResponser register a customized responser to show result
-func UseResponser(r types.Responser) {
+func UseResponser(r types.ApiResponser) {
     responser = r
 }

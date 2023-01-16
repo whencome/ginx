@@ -6,8 +6,8 @@ import (
     "github.com/gin-gonic/gin"
 )
 
-// Responser a responser was used to show request result to client
-type Responser interface {
+// ApiResponser a responser was used to show request result to client
+type ApiResponser interface {
     // Response a common response
     Response(c *gin.Context, code int, v interface{})
     // Success show a success response
@@ -16,20 +16,20 @@ type Responser interface {
     Fail(c *gin.Context, v interface{})
 }
 
-// DefaultResponser a default responser implements responser interface
-type DefaultResponser struct{}
+// DefaultApiResponser a default responser implements responser interface
+type DefaultApiResponser struct{}
 
-func (r DefaultResponser) Response(c *gin.Context, code int, v interface{}) {
+func (r DefaultApiResponser) Response(c *gin.Context, code int, v interface{}) {
     c.JSON(code, v)
     c.Abort()
 }
 
-func (r DefaultResponser) Success(c *gin.Context, v interface{}) {
+func (r DefaultApiResponser) Success(c *gin.Context, v interface{}) {
     c.JSON(http.StatusOK, v)
     c.Abort()
 }
 
-func (r DefaultResponser) Fail(c *gin.Context, v interface{}) {
+func (r DefaultApiResponser) Fail(c *gin.Context, v interface{}) {
     if e, ok := v.(ApiError); ok {
         c.JSON(e.Code(), v)
         c.Abort()
