@@ -29,11 +29,8 @@ type Options struct {
     KeyFile  string `json:"key_file" yaml:"key_file" toml:"key_file"`    // 密钥文件
 }
 
-// InitFunc http server init func
-type InitFunc func(r *gin.Engine)
-
 // HookFunc http server init & stop hooks
-type HookFunc func() error
+type HookFunc func(r *gin.Engine) error
 
 // DefaultOptions create a default options
 func DefaultOptions() *Options {
@@ -50,8 +47,6 @@ type HTTPServer struct {
     engine  *gin.Engine
     svr     *http.Server
     options *Options
-    // server initialize functions
-    initFunc InitFunc
     // hooks of init server
     preInitFunc  HookFunc
     postInitFunc HookFunc
@@ -78,10 +73,6 @@ func New(options *Options) *HTTPServer {
     return s
 }
 
-func (s *HTTPServer) Init(f InitFunc) {
-    s.initFunc = f
-}
-
 func (s *HTTPServer) PreInit(f HookFunc) {
     s.preInitFunc = f
 }
@@ -102,7 +93,7 @@ func (s *HTTPServer) execHook(f HookFunc) error {
     if f == nil {
         return nil
     }
-    return f()
+    return f(s.engine)
 }
 
 // Runnable check whether server is runnable
@@ -120,11 +111,8 @@ func (s *HTTPServer) prepare() error {
     }
 
     // 初始化server
-    if e := s.execHook(s.postInitFunc); e != nil {
+    if e := s.execHook(s.preInitFunc); e != nil {
         return e
-    }
-    if s.initFunc != nil {
-        s.initFunc(s.engine)
     }
     if e := s.execHook(s.postInitFunc); e != nil {
         return e
@@ -186,16 +174,22 @@ func (s *HTTPServer) Start() (bool, error) {
 // Stop stop the server
 func (s *HTTPServer) Stop() {
     // exec pre stop hook
-    s.execHook(s.preStopFunc)
+    err := s.execHook(s.preStopFunc)
+    if err != nil {
+        log.Printf("prepare stop server failed: %s \n", err)
+    }
     // shutdown the http server
     log.Println("start to shutdown http server")
-    if err := s.svr.Shutdown(context.Background()); err != nil {
+    if err = s.svr.Shutdown(context.Background()); err != nil {
         log.Printf("shutdown server failed: %s \n", err)
         return
     }
     s.running = false
     // exec post stop hook
-    s.execHook(s.postStopFunc)
+    err = s.execHook(s.postStopFunc)
+    if err != nil {
+        log.Printf("stop server error: %s \n", err)
+    }
     log.Println("http server closed")
 }
 

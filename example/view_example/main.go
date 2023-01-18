@@ -23,7 +23,7 @@ func main() {
         Mode: server.ModeDebug,
     }
     svr = server.New(opts)
-    svr.Init(initRoutes)
+    svr.PreInit(initRoutes)
     // NOTE: server run in block mode
     if err := svr.Run(); err != nil {
         log.Printf("run server failed: %s\n", err)
@@ -46,7 +46,8 @@ func initView() {
     view.AddTplFiles("template/public", "template/navbar", "template/error")
 }
 
-func initRoutes(r *gin.Engine) {
+func initRoutes(r *gin.Engine) error {
     // init routes
     r.GET("/test", ginx.NewPageHandler(reqs.TestRequest{}, "test/test", new(handlers.Test).Test))
+    return nil
 }

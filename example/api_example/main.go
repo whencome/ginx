@@ -19,20 +19,20 @@ func main() {
         Mode: server.ModeDebug,
     }
     svr = server.New(opts)
-    svr.Init(initRoutes)
-    svr.PreInit(func() error {
+    svr.PreInit(func(r *gin.Engine) error {
+        initRoutes(r)
         log.Println("--------- pre init ---------")
         return nil
     })
-    svr.PostInit(func() error {
+    svr.PostInit(func(r *gin.Engine) error {
         log.Println("--------- post init ---------")
         return nil
     })
-    svr.PreStop(func() error {
+    svr.PreStop(func(r *gin.Engine) error {
         log.Println("--------- pre stop ---------")
         return nil
     })
-    svr.PostStop(func() error {
+    svr.PostStop(func(r *gin.Engine) error {
         log.Println("--------- post stop ---------")
         return nil
     })

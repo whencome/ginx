@@ -19,14 +19,14 @@ func main() {
         Mode: server.ModeDebug,
     }
     svr = server.New(opts)
-    svr.Init(initRoutes)
+    svr.PreInit(initRoutes)
     if err := svr.Run(); err != nil {
         log.Printf("run server failed: %s\n", err)
         return
     }
 }
 
-func initRoutes(r *gin.Engine) {
+func initRoutes(r *gin.Engine) error {
     v1g := r.Group("v1")
     v1Bucket := bucket.New(
         v1g,
@@ -50,4 +50,5 @@ func initRoutes(r *gin.Engine) {
     v2Bucket.AddBucket(v3Bucket)
 
     v2Bucket.Register()
+    return nil
 }
