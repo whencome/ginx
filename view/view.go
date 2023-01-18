@@ -6,8 +6,6 @@ import (
     "net/http"
     "path/filepath"
     "strings"
-
-    "github.com/gin-gonic/contrib/sessions"
 )
 
 // tplDir 注册模板文件路径
@@ -21,9 +19,6 @@ var tplExtension = ".html"
 
 // funcMaps 定义自定义方法列表
 var funcMaps template.FuncMap = nil
-
-// 设置全局变量store
-var store = sessions.NewCookieStore([]byte("ginx_sess"))
 
 // Init 初始化View
 // tplDir 为模板的根目录

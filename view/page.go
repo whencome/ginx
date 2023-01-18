@@ -8,7 +8,6 @@ import (
     "runtime/debug"
     "strings"
 
-    "github.com/gin-gonic/contrib/sessions"
     "github.com/gin-gonic/gin"
 )
 
@@ -112,11 +111,6 @@ func (p *Page) ContentType() string {
     return contentType
 }
 
-// Session 获取会话信息
-func (p *Page) Session() sessions.Session {
-    return sessions.Default(p.Ctx)
-}
-
 // SetTitle 设置页面标题
 func (p *Page) SetTitle(t string) {
     p.Title = t
@@ -174,7 +168,7 @@ func (p *Page) ShowWithError(e interface{}) error {
 
 // ShowDirect 显示页面内容
 func (p *Page) ShowDirect() {
-    ShowDirect(p.Ctx.Writer, p)
+    _ = ShowDirect(p.Ctx.Writer, p)
 }
 
 // ShowDirectWithError 显示页面内容
