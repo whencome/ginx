@@ -6,12 +6,28 @@ import (
     "github.com/whencome/ginx/bucket"
     "github.com/whencome/ginx/server"
     "github.com/whencome/ginx/types"
+    "github.com/whencome/ginx/validator"
     "github.com/whencome/ginx/view"
 )
 
 // UseApiResponser 注册API Responser
 func UseApiResponser(r types.ApiResponser) {
     api.UseResponser(r)
+}
+
+// UseTranslator 注册错误验证对象
+func UseTranslator(t types.ErrorTranslator) {
+    validator.UseTranslator(t)
+}
+
+// ShowFullErrors 是否显示全部错误
+func ShowFullErrors(b bool) {
+    validator.ShowFullError(b)
+}
+
+// SetErrSeparator 设置错误分割符，当showAllErrors为true时，将以此符号分割
+func SetErrSeparator(s string) {
+    validator.SetErrSeparator(s)
 }
 
 // NewServer create a new http server

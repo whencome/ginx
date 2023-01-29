@@ -3,6 +3,7 @@ package view
 import (
     "github.com/gin-gonic/gin"
     "github.com/whencome/ginx/types"
+    "github.com/whencome/ginx/validator"
 )
 
 // HandlerFunc the logic to handle the page request
@@ -24,7 +25,7 @@ func NewHandler(t string, r types.Request, f HandlerFunc) gin.HandlerFunc {
         if r != nil {
             req = types.NewRequest(r)
             if err := c.ShouldBind(req); err != nil {
-                _ = p.ShowWithError(err)
+                _ = p.ShowWithError(validator.Error(err))
                 return
             }
             if vr, ok := req.(types.ValidateableRequest); ok {

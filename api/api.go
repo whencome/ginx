@@ -3,6 +3,7 @@ package api
 import (
     "github.com/gin-gonic/gin"
     "github.com/whencome/ginx/types"
+    "github.com/whencome/ginx/validator"
     "net/http"
 )
 
@@ -31,7 +32,7 @@ func NewHandler(r types.Request, f HandlerFunc) gin.HandlerFunc {
         if r != nil {
             req = types.NewRequest(r)
             if err := c.ShouldBind(req); err != nil {
-                getResponser().Response(c, http.StatusBadRequest, err)
+                getResponser().Response(c, http.StatusBadRequest, validator.Error(err))
                 return
             }
             if vr, ok := req.(types.ValidateableRequest); ok {
