@@ -1,8 +1,7 @@
-package bucket
+package ginx
 
 import (
     "github.com/gin-gonic/gin"
-    "github.com/whencome/ginx/types"
 )
 
 // bucketer a bucket interface
@@ -15,15 +14,16 @@ type bucketer interface {
 type Bucket struct {
     route       *gin.RouterGroup
     middlewares []gin.HandlerFunc
-    handlers    []types.Handler
+    handlers    []Handler
     buckets     []bucketer
 }
 
-func New(r *gin.RouterGroup, handlers ...types.Handler) *Bucket {
+// NewBucket create a new bucket
+func NewBucket(r *gin.RouterGroup, handlers ...Handler) *Bucket {
     b := &Bucket{
         route:       r,
         middlewares: make([]gin.HandlerFunc, 0),
-        handlers:    make([]types.Handler, 0),
+        handlers:    make([]Handler, 0),
         buckets:     make([]bucketer, 0),
     }
     if len(handlers) > 0 {
@@ -56,16 +56,16 @@ func (b *Bucket) UseMiddlewares(ms ...gin.HandlerFunc) {
     b.route.Use(ms...)
 }
 
-func (b *Bucket) AddHandler(h types.Handler) {
+func (b *Bucket) AddHandler(h Handler) {
     if b.handlers == nil {
-        b.handlers = make([]types.Handler, 0)
+        b.handlers = make([]Handler, 0)
     }
     b.handlers = append(b.handlers, h)
 }
 
-func (b *Bucket) AddHandlers(hs []types.Handler) {
+func (b *Bucket) AddHandlers(hs []Handler) {
     if b.handlers == nil {
-        b.handlers = make([]types.Handler, 0)
+        b.handlers = make([]Handler, 0)
     }
     b.handlers = append(b.handlers, hs...)
 }

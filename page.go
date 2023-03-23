@@ -1,8 +1,7 @@
-package view
+package ginx
 
 import (
     "fmt"
-    "github.com/whencome/ginx/types"
     "net/http"
     "net/url"
     "runtime/debug"
@@ -14,7 +13,7 @@ import (
 // 定义全局页面初始化方法变量，用于在每次创建Page时进行初始化
 var initPageFunc PageInitFunc = nil
 
-// PageInitFunc 定义一个页面初始化方法，返回map[string]string，返回的数据将放到页面的会话数据（Page.Session）中
+// PageInitFunc 定义一个页面初始化方法，返回map[string]interface{}，返回的数据将放到页面的会话数据（Page.Session）中
 type PageInitFunc func() map[string]interface{}
 
 func RegisterPageInitFunc(f PageInitFunc) {
@@ -41,7 +40,8 @@ func (pe *PageError) Error() string {
 // Page 定义一个页面数据
 type Page struct {
     Ctx     *gin.Context
-    Request types.Request          // 页面请求数据
+    view    *View
+    Request Request                // 页面请求数据
     Params  url.Values             // 请求参数列表
     Tpl     string                 `json:"tpl"`    // 定义模板
     Title   string                 `json:"title"`  // 页面标题
@@ -51,9 +51,10 @@ type Page struct {
 }
 
 // NewPage 创建一个Page对象
-func NewPage(c *gin.Context, tpl string) *Page {
+func NewPage(c *gin.Context, v *View, tpl string) *Page {
     p := &Page{
         Ctx:  c,
+        view: v,
         Tpl:  tpl,
         Data: make(map[string]interface{}),
         Sess: make(map[string]interface{}),
@@ -63,9 +64,10 @@ func NewPage(c *gin.Context, tpl string) *Page {
 }
 
 // NewPageWithData 创建一个Page对象，并初始化数据
-func NewPageWithData(c *gin.Context, tpl string, data map[string]interface{}) *Page {
+func NewPageWithData(c *gin.Context, v *View, tpl string, data map[string]interface{}) *Page {
     p := &Page{
         Ctx:    c,
+        view:   v,
         Tpl:    tpl,
         Data:   data,
         Sess:   make(map[string]interface{}),
@@ -157,7 +159,7 @@ func (p *Page) HasError() bool {
 
 // Show 显示页面内容
 func (p *Page) Show() error {
-    return RenderPage(p.Ctx.Writer, p)
+    return p.view.RenderPage(p.Ctx.Writer, p)
 }
 
 // ShowWithError 将错误添加进页面并显示
@@ -168,7 +170,7 @@ func (p *Page) ShowWithError(e interface{}) error {
 
 // ShowDirect 显示页面内容
 func (p *Page) ShowDirect() {
-    _ = ShowDirect(p.Ctx.Writer, p)
+    _ = p.view.ShowDirect(p.Ctx.Writer, p)
 }
 
 // ShowDirectWithError 显示页面内容

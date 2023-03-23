@@ -1,10 +1,9 @@
-package server
+package ginx
 
 import (
     "context"
     "errors"
     "fmt"
-    "log"
     "net/http"
     "os"
     "os/signal"
@@ -20,8 +19,8 @@ const (
     ModeRelease = "release"
 )
 
-// Options http server run options
-type Options struct {
+// ServerOptions http server run options
+type ServerOptions struct {
     Port     int    `json:"port" yaml:"port" toml:"port"`                // 服务端口
     Mode     string `json:"mode" yaml:"mode" toml:"mode"`                // 运行模式, debug or release
     Tls      bool   `json:"tls" yaml:"tls" toml:"tls"`                   // 是否启用HTTPS
@@ -29,12 +28,12 @@ type Options struct {
     KeyFile  string `json:"key_file" yaml:"key_file" toml:"key_file"`    // 密钥文件
 }
 
-// HookFunc http server init & stop hooks
-type HookFunc func(r *gin.Engine) error
+// ServerHookFunc http server init & stop hooks
+type ServerHookFunc func(r *gin.Engine) error
 
-// DefaultOptions create a default options
-func DefaultOptions() *Options {
-    return &Options{
+// DefaultServerOptions create a default options
+func DefaultServerOptions() *ServerOptions {
+    return &ServerOptions{
         Port: 8080,
         Mode: ModeRelease,
         Tls:  false,
@@ -46,19 +45,19 @@ type HTTPServer struct {
     running bool
     engine  *gin.Engine
     svr     *http.Server
-    options *Options
+    options *ServerOptions
     // hooks of init server
-    preInitFunc  HookFunc
-    postInitFunc HookFunc
+    preInitFunc  ServerHookFunc
+    postInitFunc ServerHookFunc
     // hooks of stop server
-    preStopFunc  HookFunc
-    postStopFunc HookFunc
+    preStopFunc  ServerHookFunc
+    postStopFunc ServerHookFunc
 }
 
-// New create a http server
-func New(options *Options) *HTTPServer {
+// NewServer create a http server
+func NewServer(options *ServerOptions) *HTTPServer {
     if options == nil {
-        options = DefaultOptions()
+        options = DefaultServerOptions()
     }
     s := &HTTPServer{
         running: false,
@@ -73,23 +72,27 @@ func New(options *Options) *HTTPServer {
     return s
 }
 
-func (s *HTTPServer) PreInit(f HookFunc) {
+func (s *HTTPServer) GinEngine() *gin.Engine {
+    return s.engine
+}
+
+func (s *HTTPServer) PreInit(f ServerHookFunc) {
     s.preInitFunc = f
 }
 
-func (s *HTTPServer) PostInit(f HookFunc) {
+func (s *HTTPServer) PostInit(f ServerHookFunc) {
     s.postInitFunc = f
 }
 
-func (s *HTTPServer) PreStop(f HookFunc) {
+func (s *HTTPServer) PreStop(f ServerHookFunc) {
     s.preStopFunc = f
 }
 
-func (s *HTTPServer) PostStop(f HookFunc) {
+func (s *HTTPServer) PostStop(f ServerHookFunc) {
     s.postStopFunc = f
 }
 
-func (s *HTTPServer) execHook(f HookFunc) error {
+func (s *HTTPServer) execHook(f ServerHookFunc) error {
     if f == nil {
         return nil
     }
@@ -105,15 +108,17 @@ func (s *HTTPServer) prepare() error {
     if !s.Runnable() {
         return errors.New("http server not runnable, it's probably has already started")
     }
-    // set gin run mode
-    if s.options.Mode != ModeDebug {
-        gin.SetMode(gin.ReleaseMode)
-    }
 
     // 初始化server
     if e := s.execHook(s.preInitFunc); e != nil {
         return e
     }
+
+    // set gin run mode
+    if s.options.Mode != ModeDebug {
+        gin.SetMode(gin.ReleaseMode)
+    }
+
     if e := s.execHook(s.postInitFunc); e != nil {
         return e
     }
@@ -166,31 +171,31 @@ func (s *HTTPServer) Start() (bool, error) {
     case err := <-startCh:
         return false, err
     case <-time.After(time.Second * 3):
-        log.Printf("http server started on %s", s.svr.Addr)
+        logger.Infof("http server started on %s", s.svr.Addr)
         return true, nil
     }
 }
 
-// Stop stop the server
+// Stop the server
 func (s *HTTPServer) Stop() {
     // exec pre stop hook
     err := s.execHook(s.preStopFunc)
     if err != nil {
-        log.Printf("prepare stop server failed: %s \n", err)
+        logger.Errorf("prepare stop server failed: %s \n", err)
     }
     // shutdown the http server
-    log.Println("start to shutdown http server")
+    logger.Infof("start to shutdown http server")
     if err = s.svr.Shutdown(context.Background()); err != nil {
-        log.Printf("shutdown server failed: %s \n", err)
+        logger.Errorf("shutdown server: %s \n", err)
         return
     }
     s.running = false
     // exec post stop hook
     err = s.execHook(s.postStopFunc)
     if err != nil {
-        log.Printf("stop server error: %s \n", err)
+        logger.Errorf("stop server: %s \n", err)
     }
-    log.Println("http server closed")
+    logger.Infof("http server closed")
 }
 
 // Wait block and wait

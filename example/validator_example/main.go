@@ -7,11 +7,11 @@ import (
     "github.com/go-playground/validator/v10"
     et "github.com/go-playground/validator/v10/translations/en"
     "github.com/whencome/ginx"
-    "github.com/whencome/ginx/server"
+    v "github.com/whencome/ginx/validator"
     "log"
 )
 
-var svr *server.HTTPServer
+var svr *ginx.HTTPServer
 
 // ErrTrans 实现一个自定义的解释器
 type ErrTrans struct{}
@@ -25,17 +25,17 @@ func (t *ErrTrans) RegisterTranslations(v *validator.Validate) (ut.Translator, e
 
 func main() {
     // 设置错误分割符号
-    ginx.SetErrSeparator("||")
+    v.SetErrSeparator("||")
     // 显示全部错误
-    ginx.ShowFullErrors(true)
+    v.ShowFullError(true)
     // 使用自定义解释器
-    ginx.UseTranslator(new(ErrTrans))
+    v.UseTranslator(new(ErrTrans))
     // run server
-    opts := &server.Options{
+    opts := &ginx.ServerOptions{
         Port: 8914,
-        Mode: server.ModeDebug,
+        Mode: ginx.ModeDebug,
     }
-    svr = server.New(opts)
+    svr = ginx.NewServer(opts)
     svr.PreInit(func(r *gin.Engine) error {
         initRoutes(r)
         return nil

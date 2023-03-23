@@ -6,19 +6,18 @@ import (
     v3 "bucket_example/handlers/v3"
     "fmt"
     "github.com/gin-gonic/gin"
-    "github.com/whencome/ginx/bucket"
-    "github.com/whencome/ginx/server"
+    "github.com/whencome/ginx"
     "log"
 )
 
-var svr *server.HTTPServer
+var svr *ginx.HTTPServer
 
 func main() {
-    opts := &server.Options{
+    opts := &ginx.ServerOptions{
         Port: 8913,
-        Mode: server.ModeDebug,
+        Mode: ginx.ModeDebug,
     }
-    svr = server.New(opts)
+    svr = ginx.NewServer(opts)
     svr.PreInit(initRoutes)
     if err := svr.Run(); err != nil {
         log.Printf("run server failed: %s\n", err)
@@ -28,14 +27,14 @@ func main() {
 
 func initRoutes(r *gin.Engine) error {
     v1g := r.Group("v1")
-    v1Bucket := bucket.New(
+    v1Bucket := ginx.NewBucket(
         v1g,
         new(v1.Test),
         new(v1.Welcome))
     v1Bucket.Register()
 
     v2g := r.Group("v2")
-    v2Bucket := bucket.New(
+    v2Bucket := ginx.NewBucket(
         v2g,
         new(v2.Test),
         new(v2.Welcome))
@@ -43,7 +42,7 @@ func initRoutes(r *gin.Engine) error {
     v3g := v2g.Group("v3", func(context *gin.Context) {
         fmt.Println("-------v3 middleware-------")
     })
-    v3Bucket := bucket.New(
+    v3Bucket := ginx.NewBucket(
         v3g,
         new(v3.Test),
         new(v3.Welcome))

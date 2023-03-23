@@ -6,7 +6,6 @@ import (
     ut "github.com/go-playground/universal-translator"
     "github.com/go-playground/validator/v10"
     zt "github.com/go-playground/validator/v10/translations/zh"
-    "github.com/whencome/ginx/types"
     "log"
     "reflect"
 )
@@ -37,8 +36,13 @@ func init() {
     })
 }
 
+// ErrorTranslator 错误解释器，用于多语言环境的错误处理
+type ErrorTranslator interface {
+    RegisterTranslations(v *validator.Validate) (ut.Translator, error)
+}
+
 // UseTranslator 注册一个自定义的错误解释器，主要用于非汉语环境
-func UseTranslator(et types.ErrorTranslator) {
+func UseTranslator(et ErrorTranslator) {
     defer func() {
         if r := recover(); r != nil {
             log.Println(r)

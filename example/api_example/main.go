@@ -5,20 +5,19 @@ import (
 
     "github.com/gin-gonic/gin"
     "github.com/whencome/ginx"
-    "github.com/whencome/ginx/server"
 )
 
-var svr *server.HTTPServer
+var svr *ginx.HTTPServer
 
 func main() {
     // register api
     ginx.UseApiResponser(new(ApiResponser))
     // run server
-    opts := &server.Options{
+    opts := &ginx.ServerOptions{
         Port: 8911,
-        Mode: server.ModeDebug,
+        Mode: ginx.ModeDebug,
     }
-    svr = server.New(opts)
+    svr = ginx.NewServer(opts)
     svr.PreInit(func(r *gin.Engine) error {
         initRoutes(r)
         log.Println("--------- pre init ---------")
