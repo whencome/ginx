@@ -32,6 +32,24 @@ func getApiResponser() ApiResponser {
     return apiResponser
 }
 
+// HandlerFunc the logic to handle the api request
+type HandlerFunc func(c *gin.Context) error
+
+// NewHandler create a new gin.HandlerFunc, with no request, it's often been used to wrap a middleware
+func NewHandler(f HandlerFunc) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        if f == nil {
+            return
+        }
+        err := f(c)
+        if err != nil {
+            getApiResponser().Fail(c, err)
+            c.Abort()
+            return
+        }
+    }
+}
+
 // ApiHandlerFunc the logic to handle the api request
 type ApiHandlerFunc func(c *gin.Context, r Request) (Response, error)
 
@@ -40,6 +58,7 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
     return func(c *gin.Context) {
         if f == nil {
             getApiResponser().Response(c, http.StatusNotImplemented, "service not implemented")
+            c.Abort()
             return
         }
         // parse && validate request
@@ -48,11 +67,13 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
             req = NewRequest(r)
             if err := c.ShouldBind(req); err != nil {
                 getApiResponser().Response(c, http.StatusBadRequest, validator.Error(err))
+                c.Abort()
                 return
             }
             if vr, ok := req.(ValidateableRequest); ok {
                 if err := vr.Validate(); err != nil {
                     getApiResponser().Response(c, http.StatusBadRequest, err)
+                    c.Abort()
                     return
                 }
             }
@@ -60,6 +81,7 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
         resp, err := f(c, req)
         if err != nil {
             getApiResponser().Fail(c, err)
+            c.Abort()
             return
         }
         getApiResponser().Success(c, resp)
@@ -79,6 +101,7 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.Handler
         p := NewPage(c, v, t)
         if f == nil {
             _ = p.ShowWithError("service not implemented")
+            c.Abort()
             return
         }
         // parse && validate request
@@ -87,11 +110,13 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.Handler
             req = NewRequest(r)
             if err := c.ShouldBind(req); err != nil {
                 _ = p.ShowWithError(validator.Error(err))
+                c.Abort()
                 return
             }
             if vr, ok := req.(ValidateableRequest); ok {
                 if err := vr.Validate(); err != nil {
                     _ = p.ShowWithError(err)
+                    c.Abort()
                     return
                 }
             }
@@ -99,6 +124,7 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.Handler
         err := f(c, p, req)
         if err != nil {
             _ = p.ShowWithError(err)
+            c.Abort()
             return
         }
         _ = p.Show()
