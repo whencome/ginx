@@ -85,7 +85,12 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		getApiResponser().Success(c, resp)
+		// if the response is nil, then won't use the responser to make a success response.
+		// in the situation the handler func f returns a nil, it act as a raw api handler func.
+		// so you can use api handler func to replace raw api handler func.
+		if resp != nil {
+			getApiResponser().Success(c, resp)
+		}
 		return
 	}
 }
