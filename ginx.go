@@ -86,49 +86,8 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
 			return
 		}
 		// if the response is nil, then won't use the responser to make a success response.
-		// in the situation the handler func f returns a nil, it act as a raw api handler func.
-		// so you can use api handler func to replace raw api handler func.
 		if resp != nil {
 			getApiResponser().Success(c, resp)
-		}
-		return
-	}
-}
-
-// RawApiHandlerFunc defines a function that won't handle the corrent response, you should handle it by yourself,
-// this function will handle the error so that make sure we handle the error in a unified way
-type RawApiHandlerFunc func(c *gin.Context, r Request) error
-
-// NewRawApiHandler create a new gin.HandlerFunc by a RawApiHandlerFunc
-func NewRawApiHandler(r Request, f RawApiHandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if f == nil {
-			getApiResponser().Response(c, http.StatusNotImplemented, "service not implemented")
-			c.Abort()
-			return
-		}
-		// parse && validate request
-		var req Request
-		if r != nil {
-			req = NewRequest(r)
-			if err := c.ShouldBind(req); err != nil {
-				getApiResponser().Response(c, http.StatusBadRequest, validator.Error(err))
-				c.Abort()
-				return
-			}
-			if vr, ok := req.(ValidateableRequest); ok {
-				if err := vr.Validate(); err != nil {
-					getApiResponser().Response(c, http.StatusBadRequest, err)
-					c.Abort()
-					return
-				}
-			}
-		}
-		err := f(c, req)
-		if err != nil {
-			getApiResponser().Fail(c, err)
-			c.Abort()
-			return
 		}
 		return
 	}
