@@ -2,9 +2,14 @@ package ginx
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/whencome/ginx/validator"
+	"github.com/whencome/xlog"
 )
 
 // global logger
@@ -133,5 +138,29 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.Handler
 		}
 		_ = p.Show()
 		return
+	}
+}
+
+// Wait 信号监听，当监听到退出信号时，执行资源释放函数，并退出程序
+// f 程序退出前的资源释放方法
+func Wait(releaseFunc func()) {
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	for {
+		s := <-sigChan
+		switch s {
+		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP:
+			xlog.Info("recv exit signal...")
+			// 释放相关资源
+			if releaseFunc != nil {
+				xlog.Info("execute release func...")
+				releaseFunc()
+			}
+			// 等待1秒再退出
+			time.Sleep(1 * time.Second)
+			xlog.Info("exit app...")
+			os.Exit(0)
+			return
+		}
 	}
 }
