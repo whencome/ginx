@@ -32,12 +32,6 @@ func NewBucket(r *gin.RouterGroup, handlers ...Handler) *Bucket {
 	return b
 }
 
-// WithRouterGroup use the new RouterGroup g replace origin route set
-func (b *Bucket) WithRouterGroup(g *gin.RouterGroup) *Bucket {
-	b.routerGroup = g
-	return b
-}
-
 func (b *Bucket) Register() {
 	if len(b.handlers) > 0 {
 		for _, h := range b.handlers {
