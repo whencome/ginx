@@ -11,6 +11,7 @@ import (
     "time"
 
     "github.com/gin-gonic/gin"
+    "github.com/whencome/ginx/log"
 )
 
 // define gin run mode constant
@@ -171,7 +172,7 @@ func (s *HTTPServer) Start() (bool, error) {
     case err := <-startCh:
         return false, err
     case <-time.After(time.Second * 3):
-        logger.Infof("http server started on %s", s.svr.Addr)
+        log.Infof("http server started on %s", s.svr.Addr)
         return true, nil
     }
 }
@@ -181,21 +182,21 @@ func (s *HTTPServer) Stop() {
     // exec pre stop hook
     err := s.execHook(s.preStopFunc)
     if err != nil {
-        logger.Errorf("prepare stop server failed: %s \n", err)
+        log.Errorf("prepare stop server failed: %s \n", err)
     }
     // shutdown the http server
-    logger.Infof("start to shutdown http server")
+    log.Infof("start to shutdown http server")
     if err = s.svr.Shutdown(context.Background()); err != nil {
-        logger.Errorf("shutdown server: %s \n", err)
+        log.Errorf("shutdown server: %s \n", err)
         return
     }
     s.running = false
     // exec post stop hook
     err = s.execHook(s.postStopFunc)
     if err != nil {
-        logger.Errorf("stop server: %s \n", err)
+        log.Errorf("stop server: %s \n", err)
     }
-    logger.Infof("http server closed")
+    log.Infof("http server closed")
 }
 
 // Wait block and wait

@@ -6,7 +6,7 @@ import (
     ut "github.com/go-playground/universal-translator"
     "github.com/go-playground/validator/v10"
     zt "github.com/go-playground/validator/v10/translations/zh"
-    "log"
+    "github.com/whencome/ginx/log"
     "reflect"
 )
 
@@ -45,12 +45,12 @@ type ErrorTranslator interface {
 func UseTranslator(et ErrorTranslator) {
     defer func() {
         if r := recover(); r != nil {
-            log.Println(r)
+            log.Errorf("recovered from: %v", r)
         }
     }()
     t, err := et.RegisterTranslations(valid)
     if err != nil {
-        log.Printf("register custom translations failed: %s", err)
+        log.Errorf("register custom translations failed: %s", err)
         return
     }
     if trans != nil {
@@ -85,7 +85,7 @@ func Translate(err error) string {
 func Error(err error) string {
     defer func() {
         if r := recover(); r != nil {
-            log.Println(r)
+            log.Errorf("recovered from: %v", r)
         }
     }()
     errs, ok := err.(validator.ValidationErrors)

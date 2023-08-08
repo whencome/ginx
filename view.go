@@ -1,6 +1,7 @@
 package ginx
 
 import (
+    "github.com/whencome/ginx/log"
     "html/template"
     "net/http"
     "path/filepath"
@@ -129,13 +130,13 @@ func (view *View) renderHtml(w http.ResponseWriter, name string, files []string,
     }
     t, e := t.ParseFiles(files...)
     if e != nil {
-        logger.Errorf("parse template files failed: %s", e)
+        log.Errorf("parse template files failed: %s", e)
         return e
     }
     // 输出内容
     e = t.Execute(w, v)
     if e != nil {
-        logger.Errorf("template execute failed: %s", e)
+        log.Errorf("template execute failed: %s", e)
         return e
     }
     return nil
@@ -175,7 +176,7 @@ func (view *View) Show(w http.ResponseWriter, p *Page) {
         p.AddError(err)
         err = view.RenderPage(w, p)
         if err != nil {
-            logger.Errorf("render page failed: %s", err)
+            log.Errorf("render page failed: %s", err)
         }
     }
 }
@@ -184,7 +185,7 @@ func (view *View) Show(w http.ResponseWriter, p *Page) {
 func (view *View) ShowDirect(w http.ResponseWriter, p *Page) error {
     err := view.RenderDirect(w, p.Tpl, []string{p.Tpl}, p)
     if err != nil {
-        logger.Errorf("render page failed: %s", err)
+        log.Errorf("render page failed: %s", err)
     }
     return err
 }

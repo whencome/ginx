@@ -15,8 +15,8 @@ type Handler interface {
 // Request a request from remote client
 type Request interface{}
 
-// ValidateableRequest a request should be validated by call itself Validate function mannually
-type ValidateableRequest interface {
+// ValidatableRequest a request should be validated by call it's Validate function manually
+type ValidatableRequest interface {
     Validate() error
 }
 
@@ -71,26 +71,4 @@ func (r DefaultApiResponser) Fail(c *gin.Context, v interface{}) {
 type ApiError interface {
     error
     Code() int
-}
-
-// Logger define a log interface
-type Logger interface {
-    Debugf(format string, args ...interface{})
-    Infof(format string, args ...interface{})
-    Errorf(format string, args ...interface{})
-}
-
-type defaultLogger struct {
-}
-
-func (l *defaultLogger) Debugf(format string, args ...interface{}) {
-    return
-}
-
-func (l *defaultLogger) Infof(format string, args ...interface{}) {
-    return
-}
-
-func (l *defaultLogger) Errorf(format string, args ...interface{}) {
-    return
 }
