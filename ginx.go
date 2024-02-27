@@ -54,8 +54,20 @@ func NewHandler(f HandlerFunc) gin.HandlerFunc {
 // ApiHandlerFunc the logic to handle the api request
 type ApiHandlerFunc func(c *gin.Context, r Request) (Response, error)
 
+// ApiMiddleware add middleware support to each single handler
+type ApiMiddleware func(ApiHandlerFunc) ApiHandlerFunc
+
+func apiMiddlewareChain(ms ...ApiMiddleware) ApiMiddleware {
+    return func(next ApiHandlerFunc) ApiHandlerFunc {
+        for i := len(ms) - 1; i >= 0; i-- {
+            next = ms[i](next)
+        }
+        return next
+    }
+}
+
 // NewApiHandler create a new gin.HandlerFunc
-func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
+func NewApiHandler(r Request, f ApiHandlerFunc, ms ...ApiMiddleware) gin.HandlerFunc {
     return func(c *gin.Context) {
         if f == nil {
             getApiResponser().Response(c, http.StatusNotImplemented, "service not implemented")
@@ -79,7 +91,14 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
                 }
             }
         }
-        resp, err := f(c, req)
+        // execute chain call
+        var resp Response
+        var err error
+        if len(ms) > 0 {
+            resp, err = apiMiddlewareChain(ms...)(f)(c, req)
+        } else {
+            resp, err = f(c, req)
+        }
         if err != nil {
             getApiResponser().Fail(c, err)
             c.Abort()
@@ -89,18 +108,30 @@ func NewApiHandler(r Request, f ApiHandlerFunc) gin.HandlerFunc {
         if resp != nil {
             getApiResponser().Success(c, resp)
         }
-        return
     }
 }
 
 // PageHandlerFunc the logic to handle the page request
 type PageHandlerFunc func(c *gin.Context, p *Page, r Request) error
 
+// PageMiddleware add middleware support to each single handler
+type PageMiddleware func(PageHandlerFunc) PageHandlerFunc
+
+func pageMiddlewareChain(ms ...PageMiddleware) PageMiddleware {
+    return func(next PageHandlerFunc) PageHandlerFunc {
+        for i := len(ms) - 1; i >= 0; i-- {
+            next = ms[i](next)
+        }
+        return next
+    }
+}
+
 // NewPageHandler 创建一个页面处理方法
 // t - template of current page
 // r - request
 // f - handler func
-func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.HandlerFunc {
+// ms - middleware list, allow empty
+func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc, ms ...PageMiddleware) gin.HandlerFunc {
     return func(c *gin.Context) {
         p := NewPage(c, v, t)
         if f == nil {
@@ -125,14 +156,18 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc) gin.Handler
                 }
             }
         }
-        err := f(c, p, req)
+        var err error
+        if len(ms) > 0 {
+            err = pageMiddlewareChain(ms...)(f)(c, p, req)
+        } else {
+            err = f(c, p, req)
+        }
         if err != nil {
             _ = p.ShowWithError(err)
             c.Abort()
             return
         }
         _ = p.Show()
-        return
     }
 }
 

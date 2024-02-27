@@ -47,5 +47,15 @@ func initRoutes(r *gin.Engine) error {
     // init routes
     v := initView()
     r.GET("/test", ginx.NewPageHandler(v, "test/test", reqs.TestRequest{}, new(handlers.Test).Test))
+    r.GET("/test_middleware", ginx.NewPageHandler(v, "test/test", reqs.TestRequest{}, new(handlers.Test).Test, LogMiddleware))
     return nil
+}
+
+func LogMiddleware(f ginx.PageHandlerFunc) ginx.PageHandlerFunc {
+    return func(c *gin.Context, p *ginx.Page, r ginx.Request) error {
+        log.Printf("[LogLogic] request: %+v\n", r)
+        err := f(c, p, r)
+        log.Printf("[LogLogic] err: %v\n", err)
+        return err
+    }
 }

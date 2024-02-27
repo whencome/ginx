@@ -48,4 +48,5 @@ func main() {
 
 func initRoutes(r *gin.Engine) {
     r.GET("/greet", ginx.NewApiHandler(GreetRequest{}, GreetLogic))
+    r.GET("/greet_middleware", ginx.NewApiHandler(GreetRequest{}, GreetLogic, LogMiddleware, FilterMiddleware))
 }
