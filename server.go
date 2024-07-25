@@ -16,6 +16,7 @@ import (
 
 // define gin run mode constant
 const (
+    ModeTest    = "test"
     ModeDebug   = "debug"
     ModeRelease = "release"
 )
@@ -116,7 +117,12 @@ func (s *HTTPServer) prepare() error {
     }
 
     // set gin run mode
-    if s.options.Mode != ModeDebug {
+    switch s.options.Mode {
+    case ModeTest:
+        gin.SetMode(gin.TestMode)
+    case ModeDebug:
+        gin.SetMode(gin.DebugMode)
+    default:
         gin.SetMode(gin.ReleaseMode)
     }
 
