@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "github.com/whencome/ginx"
     "net/http"
 
     "github.com/gin-gonic/gin"
@@ -15,7 +16,8 @@ type ApiResponseMessage struct {
 
 type ApiResponser struct{}
 
-func (r *ApiResponser) buildMsg(code int, v interface{}) ApiResponseMessage {
+func (r *ApiResponser) buildMsg(c *gin.Context, code int, v interface{}) ApiResponseMessage {
+    fmt.Printf("request params: %#v\n", ginx.RequestParams(c))
     msg := ApiResponseMessage{
         Code:    code,
         Message: "",
@@ -38,7 +40,7 @@ func (r *ApiResponser) buildMsg(code int, v interface{}) ApiResponseMessage {
 }
 
 func (r *ApiResponser) Response(c *gin.Context, code int, v interface{}) {
-    msg := r.buildMsg(code, v)
+    msg := r.buildMsg(c, code, v)
     c.JSON(code, msg)
     c.Abort()
 }

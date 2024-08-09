@@ -12,6 +12,11 @@ import (
     "github.com/whencome/ginx/validator"
 )
 
+const (
+    // the key for request cache
+    requestKey = "__ginx_request__"
+)
+
 // UseLogger register a global logger
 func UseLogger(l log.Logger) {
     log.Use(l)
@@ -31,6 +36,25 @@ func getApiResponser() ApiResponser {
         return new(DefaultApiResponser)
     }
     return apiResponser
+}
+
+// RequestParams get current request content
+// 此方法用于在日志记录时获取请求内容
+func RequestParams(c *gin.Context) interface{} {
+    if v, ok := c.Get(requestKey); ok {
+        return v
+    }
+    if c.Request.Method == http.MethodGet {
+        return c.Request.Form
+    }
+    contentType := c.ContentType()
+    if contentType == "application/x-www-form-urlencoded" {
+        return c.Request.PostForm
+    }
+    if contentType == "multipart/form-data" {
+        return c.Request.MultipartForm.Value
+    }
+    return nil
 }
 
 // HandlerFunc the logic to handle the api request
@@ -83,6 +107,7 @@ func NewApiHandler(r Request, f ApiHandlerFunc, ms ...ApiMiddleware) gin.Handler
                 c.Abort()
                 return
             }
+            c.Set(requestKey, req)
             if vr, ok := req.(ValidatableRequest); ok {
                 if err := vr.Validate(); err != nil {
                     getApiResponser().Response(c, http.StatusBadRequest, err)
@@ -148,6 +173,7 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc, ms ...PageM
                 c.Abort()
                 return
             }
+            c.Set(requestKey, req)
             if vr, ok := req.(ValidatableRequest); ok {
                 if err := vr.Validate(); err != nil {
                     _ = p.ShowWithError(err)
