@@ -129,6 +129,9 @@ func NewApiHandler(r Request, f ApiHandlerFunc, ms ...ApiMiddleware) gin.Handler
             c.Abort()
             return
         }
+        if c.IsAborted() {
+            return
+        }
         // if the response is nil, then won't use the responser to make a success response.
         if resp != nil {
             getApiResponser().Success(c, resp)
@@ -191,6 +194,10 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc, ms ...PageM
         if err != nil {
             _ = p.ShowWithError(err)
             c.Abort()
+            return
+        }
+        if c.IsAborted() {
+            // 如果已中止，则不再渲染页面
             return
         }
         _ = p.Show()
