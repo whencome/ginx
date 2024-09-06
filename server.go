@@ -61,6 +61,16 @@ func NewServer(options *ServerOptions) *HTTPServer {
     if options == nil {
         options = DefaultServerOptions()
     }
+    // set gin run mode
+    switch options.Mode {
+    case ModeTest:
+        gin.SetMode(gin.TestMode)
+    case ModeDebug:
+        gin.SetMode(gin.DebugMode)
+    default:
+        gin.SetMode(gin.ReleaseMode)
+    }
+    // create a http server
     s := &HTTPServer{
         running: false,
         engine:  gin.Default(),
@@ -70,6 +80,10 @@ func NewServer(options *ServerOptions) *HTTPServer {
     s.svr = &http.Server{
         Addr:    fmt.Sprintf(":%d", options.Port),
         Handler: s.engine,
+    }
+    // 初始化server
+    if e := s.execHook(s.preInitFunc); e != nil {
+        panic(e)
     }
     return s
 }
@@ -110,22 +124,6 @@ func (s *HTTPServer) prepare() error {
     if !s.Runnable() {
         return errors.New("http server not runnable, it's probably has already started")
     }
-
-    // 初始化server
-    if e := s.execHook(s.preInitFunc); e != nil {
-        return e
-    }
-
-    // set gin run mode
-    switch s.options.Mode {
-    case ModeTest:
-        gin.SetMode(gin.TestMode)
-    case ModeDebug:
-        gin.SetMode(gin.DebugMode)
-    default:
-        gin.SetMode(gin.ReleaseMode)
-    }
-
     if e := s.execHook(s.postInitFunc); e != nil {
         return e
     }
