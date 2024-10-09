@@ -36,7 +36,7 @@ func main() {
         Mode: ginx.ModeDebug,
     }
     svr = ginx.NewServer(opts)
-    svr.PreInit(func(r *gin.Engine) error {
+    svr.PostInit(func(r *gin.Engine) error {
         initRoutes(r)
         return nil
     })

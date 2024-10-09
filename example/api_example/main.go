@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
     "log"
 
     "github.com/gin-gonic/gin"
@@ -10,6 +11,8 @@ import (
 var svr *ginx.HTTPServer
 
 func main() {
+    // register global middleware
+    ginx.UseApiMiddleware(Recover)
     // register api
     ginx.UseApiResponser(new(ApiResponser))
     // run server
@@ -18,12 +21,8 @@ func main() {
         Mode: ginx.ModeDebug,
     }
     svr = ginx.NewServer(opts)
-    svr.PreInit(func(r *gin.Engine) error {
-        initRoutes(r)
-        log.Println("--------- pre init ---------")
-        return nil
-    })
     svr.PostInit(func(r *gin.Engine) error {
+        initRoutes(r)
         log.Println("--------- post init ---------")
         return nil
     })
@@ -49,4 +48,20 @@ func main() {
 func initRoutes(r *gin.Engine) {
     r.GET("/greet", ginx.NewApiHandler(GreetRequest{}, GreetLogic))
     r.GET("/greet_middleware", ginx.NewApiHandler(GreetRequest{}, GreetLogic, LogMiddleware, FilterMiddleware))
+}
+
+// Recover a middleware to capture panics
+func Recover(f ginx.ApiHandlerFunc) ginx.ApiHandlerFunc {
+    return func(c *gin.Context, r ginx.Request) (ginx.Response, error) {
+        var ret ginx.Response
+        var err error
+        defer func() {
+            if e := recover(); e != nil {
+                log.Printf("panic: %v", e)
+                err = fmt.Errorf("panic: %s", e)
+            }
+        }()
+        ret, err = f(c, r)
+        return ret, err
+    }
 }

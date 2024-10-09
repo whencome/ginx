@@ -1,11 +1,13 @@
 package main
 
 import (
+    "fmt"
     "github.com/gin-gonic/gin"
     "github.com/whencome/ginx"
     "log"
     "os"
     "path/filepath"
+    "runtime/debug"
     "view_example/handlers"
     "view_example/reqs"
 )
@@ -13,13 +15,14 @@ import (
 var svr *ginx.HTTPServer
 
 func main() {
+    ginx.UsePageMiddleware(Recover)
     // create && init http server
     opts := &ginx.ServerOptions{
         Port: 8912,
         Mode: ginx.ModeDebug,
     }
     svr = ginx.NewServer(opts)
-    svr.PreInit(initRoutes)
+    svr.PostInit(initRoutes)
     // NOTE: server run in block mode
     if err := svr.Run(); err != nil {
         log.Printf("run server failed: %s\n", err)
@@ -44,6 +47,7 @@ func initView() *ginx.View {
 }
 
 func initRoutes(r *gin.Engine) error {
+    r.Use(CustomRecovery)
     // init routes
     v := initView()
     r.GET("/test", ginx.NewPageHandler(v, "test/test", reqs.TestRequest{}, new(handlers.Test).Test))
@@ -58,4 +62,32 @@ func LogMiddleware(f ginx.PageHandlerFunc) ginx.PageHandlerFunc {
         log.Printf("[LogLogic] err: %v\n", err)
         return err
     }
+}
+
+// Recover a middleware to capture panics
+func Recover(f ginx.PageHandlerFunc) ginx.PageHandlerFunc {
+    return func(c *gin.Context, p *ginx.Page, r ginx.Request) error {
+        var err error
+        defer func() {
+            if e := recover(); e != nil {
+                log.Printf("panic: %v", e)
+                err = fmt.Errorf("panic: %s", e)
+            }
+        }()
+        err = f(c, p, r)
+        return err
+    }
+}
+
+// CustomRecovery 自定义 Recovery 中间件
+func CustomRecovery(c *gin.Context) {
+    defer func() {
+        if err := recover(); err != nil {
+            // 获取调用堆栈信息
+            stackTrace := debug.Stack()
+            log.Printf("[CustomRecovery]: %v\nStack Trace:\n%s\n", err, stackTrace)
+            c.AbortWithStatus(500)
+        }
+    }()
+    c.Next()
 }

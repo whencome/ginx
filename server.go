@@ -49,7 +49,6 @@ type HTTPServer struct {
     svr     *http.Server
     options *ServerOptions
     // hooks of init server
-    preInitFunc  ServerHookFunc
     postInitFunc ServerHookFunc
     // hooks of stop server
     preStopFunc  ServerHookFunc
@@ -81,19 +80,11 @@ func NewServer(options *ServerOptions) *HTTPServer {
         Addr:    fmt.Sprintf(":%d", options.Port),
         Handler: s.engine,
     }
-    // 初始化server
-    if e := s.execHook(s.preInitFunc); e != nil {
-        panic(e)
-    }
     return s
 }
 
 func (s *HTTPServer) GinEngine() *gin.Engine {
     return s.engine
-}
-
-func (s *HTTPServer) PreInit(f ServerHookFunc) {
-    s.preInitFunc = f
 }
 
 func (s *HTTPServer) PostInit(f ServerHookFunc) {

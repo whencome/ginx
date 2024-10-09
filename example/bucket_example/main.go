@@ -18,7 +18,7 @@ func main() {
         Mode: ginx.ModeDebug,
     }
     svr = ginx.NewServer(opts)
-    svr.PreInit(initRoutes)
+    svr.PostInit(initRoutes)
     if err := svr.Run(); err != nil {
         log.Printf("run server failed: %s\n", err)
         return

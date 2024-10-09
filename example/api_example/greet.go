@@ -15,6 +15,9 @@ type GreetRequest struct {
 func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
     // a type convert was needed
     req := r.(*GreetRequest)
+    if req.Name == "QUIT" || req.Name == "QUIT_filtered" {
+        panic("test panic from greet")
+    }
     return fmt.Sprintf("hello %s", req.Name), nil
 }
 
