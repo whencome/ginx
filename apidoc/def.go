@@ -1,11 +1,30 @@
 package apidoc
 
+// 版本
+const Version = "1.0"
+
 // Config 配置信息
 type Config struct {
+	// Title, default `API Doc`
+	Title string
+	// Version, default `1.0.0`
+	Version string
+	// Description
+	Description string
+	// Custom url prefix, default `/docs/api`
+	UrlPrefix string
+	// No document text, default `No documentation found for this API`
+	NoDocText string
+
 	// 是否启用文档
 	EnableDoc bool `json:"enable_doc"`
 	// 解析的字段标签名称，默认json
 	FieldTag string `json:"field_tag"`
+
+	// SHA256 encrypted authorization password, e.g. here is admin
+	// echo -n admin | shasum -a 256
+	// `8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918`
+	PasswordSha2 string
 }
 
 // StructInfo 结构体信息

@@ -25,6 +25,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		EnableDoc: false, // 默认不启用文档
 		FieldTag:  "form",
+		UrlPrefix: "/ginx/docs",
 	}
 }
 
