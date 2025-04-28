@@ -1,0 +1,51 @@
+package apidoc
+
+// Config 配置信息
+type Config struct {
+	// 是否启用文档
+	EnableDoc bool `json:"enable_doc"`
+	// 解析的字段标签名称，默认json
+	FieldTag string `json:"field_tag"`
+}
+
+// StructInfo 结构体信息
+type StructInfo struct {
+	Name   string      `json:"name"`   // 结构体名称
+	Desc   string      `json:"desc"`   //  结构体描述
+	Fields []FieldInfo `json:"fields"` // 字段信息
+}
+
+// FieldInfo 字段信息
+type FieldInfo struct {
+	Name     string     `json:"name"`     // 字段名称
+	Required bool       `json:"required"` // 是否必填
+	Type     string     `json:"type"`     // 字段类型
+	Desc     string     `json:"desc"`     // 字段描述
+	Tag      string     `json:"tag"`      // 字段标签
+	Struct   StructInfo `json:"fields"`   // 如果是结构体，则包含字段信息
+}
+
+// 方法信息结构
+type MethodInfo struct {
+	Name     string   // 方法名
+	Receiver string   // 接收者类型
+	Comment  string   // 方法注释
+	Params   []string // 参数列表
+	Returns  []string // 返回值列表
+}
+
+// ApiDocInfo 接口方法信息
+type ApiDocInfo struct {
+	Name    string `json:"name"`    // 接口方法名称
+	Path    string `json:"path"`    // 接口路径
+	Method  string `json:"method"`  // 请求方法，POST,GET,等
+	Group   string `json:"group"`   // 文档分组
+	Content string `json:"content"` // 接口文档内容
+}
+
+// DocGroup 文档分组
+type DocGroup struct {
+	Name string        `json:"name"` // 分组名称
+	Sort int           `json:"sort"` // 用于控制文档排序
+	Docs []*ApiDocInfo `json:"docs"` // 文档列表
+}
