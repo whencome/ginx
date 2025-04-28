@@ -45,7 +45,9 @@ type ApiDocInfo struct {
 
 // DocGroup 文档分组
 type DocGroup struct {
-	Name string        `json:"name"` // 分组名称
-	Sort int           `json:"sort"` // 用于控制文档排序
-	Docs []*ApiDocInfo `json:"docs"` // 文档列表
+	Name        string        `json:"name"`        // 分组名称
+	Description string        `json:"description"` // 分组描述
+	Sort        int           `json:"sort"`        // 用于控制文档排序
+	Groups      []*DocGroup   `json:"groups"`      // 子分组
+	Docs        []*ApiDocInfo `json:"docs"`        // 文档列表
 }

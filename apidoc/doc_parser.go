@@ -258,31 +258,36 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 		Method:  "", // 请求方法，POST,GET,等，对应注解@Router
 		Content: "", // 接口文档内容
 	}
-	// 文档内容
-	content := bytes.Buffer{}
 
 	// 先解析请求
-	reqDoc := "### 请求参数"
+	reqParamMD := ""
 	if req.Name != "" {
-		reqDoc += `
+		reqParamMD += `
 |参数名|必选|类型|说明|
 |:----|:----|:----|----|`
 		for _, field := range req.Fields {
-			reqDoc += `
+			reqParamMD += `
             ` + fmt.Sprintf("|%s|%s|%s|%s|\n", field.Name, field.Required, field.Type, field.Desc)
 		}
 	} else {
-		reqDoc += `
+		reqParamMD += `
             ` + "- 无"
 	}
+
+	// 定义文档元素变量
+	var description, mimeType string
 
 	// 解析接口文档
 	funcComment := strings.TrimSpace(method.Comment)
 	lines := strings.Split(funcComment, "\n")
+	openMarkdown := false
+	markdown := bytes.Buffer{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "@Summary") {
 			apiDoc.Name = strings.TrimSpace(strings.TrimPrefix(line, "@Summary"))
+		} else if strings.HasPrefix(line, "@Description") {
+			description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
 		} else if strings.HasPrefix(line, "@Router") {
 			router := strings.TrimSpace(strings.TrimPrefix(line, "@Router"))
 			mStart := strings.Index(router, "[")
@@ -297,10 +302,55 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 			apiDoc.Path = path
 			apiDoc.Method = methods
 		} else if strings.HasPrefix(line, "@Tags") {
-            apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
-		} else if strings.HasPrefix(line, "@Tags") {
-        }
+			apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
+		} else if strings.HasPrefix(line, "@Produce") {
+			produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
+			mimeType = GetMIMEType(produce)
+		} else if strings.HasPrefix(line, "@Markdown") {
+			openMarkdown = !openMarkdown
+		} else {
+			if openMarkdown {
+				markdown.WriteString(line)
+				markdown.WriteString("\n")
+			}
+		}
 	}
+
+	// 构造文档内容
+	doc := bytes.Buffer{}
+	// 标题
+	doc.WriteString("## " + apiDoc.Name)
+	doc.WriteString("\n\n")
+	// 描述
+	doc.WriteString("### 接口描述")
+	doc.WriteString("\n\n")
+	doc.WriteString(description)
+	doc.WriteString("\n\n")
+	// 请求地址及方式
+	doc.WriteString("### 请求地址")
+	doc.WriteString("\n\n")
+	doc.WriteString(apiDoc.Path)
+	doc.WriteString("\n\n")
+	doc.WriteString("### 请求方式")
+	doc.WriteString("\n\n")
+	doc.WriteString(apiDoc.Method)
+	doc.WriteString("\n\n")
+	doc.WriteString("### 响应内容类型")
+	doc.WriteString("\n\n")
+	doc.WriteString(mimeType)
+	doc.WriteString("\n\n")
+	// 请求参数
+	doc.WriteString("### 请求参数")
+	doc.WriteString("\n\n")
+	doc.WriteString(reqParamMD)
+	doc.WriteString("\n\n")
+	// 其他内容，暂时解析markdown内容
+	doc.WriteString(markdown.String())
+	doc.WriteString("\n\n")
+
+	// 解析接口内容为html
+	docHtml := Markdown2Html(doc.String())
+	apiDoc.Content = docHtml
 
 	return apiDoc
 }
