@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -34,9 +36,27 @@ var templateMap = KVMap{
 	"js_template_local":  "",
 }
 
-var docMap = make(map[string]KVMap)
+// var docMap = make(map[string]KVMap)
 
-var pkgMap = make(map[string][]string)
+// var pkgMap = make(map[string][]string)
+
+func initTemplates() error {
+	rootPath = getRootPath()
+	if err := readTemplate(rootPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+func rootPathFunc() {}
+func getRootPath() string {
+	funcValue := reflect.ValueOf(rootPathFunc)
+	fn := runtime.FuncForPC(funcValue.Pointer())
+	filePath, _ := fn.FileLine(0)
+	rp := filepath.Dir(filePath)
+
+	return rp
+}
 
 func verifyPassword(passwordSha2 string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -48,29 +68,25 @@ func verifyPassword(passwordSha2 string) gin.HandlerFunc {
 	}
 }
 
-type ApiRoute struct {
-	engine *gin.Engine
-	conf   *Config
-}
+// Register 注册文档路由
+func Register(r *gin.Engine) (err error) {
+	if err := initTemplates(); err != nil {
+		return err
+	}
+	// 获取api数据
+	dataMap := apiDocs.ToApiData()
 
-func NewApiRoute(r *gin.Engine, c *Config) *ApiRoute {
-	return &ApiRoute{r, c}
-}
+	r.Static(config.UrlPrefix+"/static", filepath.Join(rootPath, "static"))
 
-func (ar *ApiRoute) Register(r *gin.Engine) (err error) {
-	dataMap := d.getApiData()
-
-	ar.engine.Static(ar.conf.UrlPrefix+"/static", filepath.Join(rootPath, "static"))
-
-	ar.engine.GET(ar.conf.UrlPrefix+"/", func(c *gin.Context) {
+	r.GET(config.UrlPrefix+"/", func(c *gin.Context) {
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		c.String(http.StatusOK, ar.renderHtml())
+		c.String(http.StatusOK, renderHtml())
 	})
 
-	ar.engine.GET(ar.conf.UrlPrefix+"/data",
-		verifyPassword(ar.conf.PasswordSha2),
+	r.GET(config.UrlPrefix+"/data",
+		verifyPassword(config.PasswordSha2),
 		func(c *gin.Context) {
-			urlPrefix := ar.conf.UrlPrefix
+			urlPrefix := config.UrlPrefix
 			referer := c.Request.Header.Get("referer")
 			if referer == "" {
 				referer = "http://127.0.0.1"
@@ -81,10 +97,10 @@ func (ar *ApiRoute) Register(r *gin.Engine) (err error) {
 				"PROJECT_NAME":    PROJECT_NAME,
 				"PROJECT_VERSION": PROJECT_VERSION,
 				"host":            host,
-				"title":           ar.conf.Title,
-				"version":         ar.conf.Version,
-				"description":     ar.conf.Description,
-				"noDocText":       ar.conf.NoDocText,
+				"title":           config.Title,
+				"version":         config.Version,
+				"description":     config.Description,
+				"noDocText":       config.NoDocText,
 				"data":            dataMap,
 			})
 		})
@@ -92,7 +108,7 @@ func (ar *ApiRoute) Register(r *gin.Engine) (err error) {
 	return
 }
 
-func (ar *ApiRoute) readTemplate(rp string) error {
+func readTemplate(rp string) error {
 	templatesPath := filepath.Join(rp, "templates")
 	for k := range templateMap {
 		tByte, err := os.ReadFile(
@@ -106,7 +122,7 @@ func (ar *ApiRoute) readTemplate(rp string) error {
 	return nil
 }
 
-func (ar *ApiRoute) renderHtml() string {
+func renderHtml() string {
 	htmlStr := templateMap["index"]
 	return strings.Replace(
 		strings.Replace(

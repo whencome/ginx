@@ -284,34 +284,51 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 	markdown := bytes.Buffer{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "@Summary") {
-			apiDoc.Name = strings.TrimSpace(strings.TrimPrefix(line, "@Summary"))
-		} else if strings.HasPrefix(line, "@Description") {
-			description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
-		} else if strings.HasPrefix(line, "@Router") {
-			router := strings.TrimSpace(strings.TrimPrefix(line, "@Router"))
-			mStart := strings.Index(router, "[")
-			mEnd := strings.Index(router, "]")
-			var path, methods string
-			if mStart > 0 {
-				path = strings.TrimSpace(router[:mStart])
-				methods = strings.TrimSpace(router[mStart+1 : mEnd])
+		if openMarkdown {
+			if strings.HasPrefix(line, "@Markdown") {
+				openMarkdown = false
+				continue
 			} else {
-				path = strings.TrimSpace(router)
-			}
-			apiDoc.Path = path
-			apiDoc.Method = methods
-		} else if strings.HasPrefix(line, "@Tags") {
-			apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
-		} else if strings.HasPrefix(line, "@Produce") {
-			produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
-			mimeType = GetMIMEType(produce)
-		} else if strings.HasPrefix(line, "@Markdown") {
-			openMarkdown = !openMarkdown
-		} else {
-			if openMarkdown {
 				markdown.WriteString(line)
 				markdown.WriteString("\n")
+				continue
+			}
+		} else {
+			if strings.HasPrefix(line, "@Markdown") {
+				openMarkdown = !openMarkdown
+				continue
+			}
+			if strings.HasPrefix(line, "@Summary") {
+				apiDoc.Name = strings.TrimSpace(strings.TrimPrefix(line, "@Summary"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Description") {
+				description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Router") {
+				router := strings.TrimSpace(strings.TrimPrefix(line, "@Router"))
+				mStart := strings.Index(router, "[")
+				mEnd := strings.Index(router, "]")
+				var path, methods string
+				if mStart > 0 {
+					path = strings.TrimSpace(router[:mStart])
+					methods = strings.TrimSpace(router[mStart+1 : mEnd])
+				} else {
+					path = strings.TrimSpace(router)
+				}
+				apiDoc.Path = path
+				apiDoc.Method = methods
+				continue
+			}
+			if strings.HasPrefix(line, "@Tags") {
+				apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Produce") {
+				produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
+				mimeType = GetMIMEType(produce)
+				continue
 			}
 		}
 	}

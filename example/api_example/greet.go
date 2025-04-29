@@ -21,11 +21,12 @@ type GreetResponse struct {
 
 // @Summary 打招呼
 // @Description 用于向指定的对象打招呼
-// @Markdown @@@
+// @Markdown
 // ### 测试内容
 // * string: 打招呼结果
 // * error: 错误信息
-// @@@
+// @Markdown
+// @Router	/greet [post]
 func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	// a type convert was needed
 	req := r.(*GreetRequest)

@@ -6,6 +6,7 @@ import (
 
     "github.com/gin-gonic/gin"
     "github.com/whencome/ginx"
+    "github.com/whencome/ginx/apidoc"
 )
 
 var svr *ginx.HTTPServer
@@ -48,6 +49,8 @@ func main() {
 func initRoutes(r *gin.Engine) {
     r.GET("/greet", ginx.NewApiHandler(GreetRequest{}, GreetLogic))
     r.GET("/greet_middleware", ginx.NewApiHandler(GreetRequest{}, GreetLogic, LogMiddleware, FilterMiddleware))
+    fmt.Println("z")
+    apidoc.Register(r)
 }
 
 // Recover a middleware to capture panics
