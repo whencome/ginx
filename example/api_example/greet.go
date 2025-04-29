@@ -11,7 +11,16 @@ import (
 
 // GreetRequest 打招呼请求
 type GreetRequest struct {
-	Name string `form:"name" label:"姓名" binding:"required" binding:"required"` // 打招呼对象
+	// 姓名
+	Name string `form:"name" label:"姓名" binding:"required"` // 打招呼对象
+}
+
+// SayHiRequest 问好请求
+type SayHiRequest struct {
+	// 姓名
+	Name string `form:"name" label:"姓名" binding:"required"`
+	// 时间
+	Time string `form:"time" label:"时间"`
 }
 
 // GreetResponse 打招呼返回结果
@@ -21,6 +30,7 @@ type GreetResponse struct {
 
 // @Summary 打招呼
 // @Description 用于向指定的对象打招呼
+// @Produce json
 // @Markdown
 // ### 测试内容
 // * string: 打招呼结果
@@ -34,6 +44,52 @@ func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 		panic("test panic from greet")
 	}
 	return fmt.Sprintf("hello %s", req.Name), nil
+}
+
+// 向别人说好
+// @Summary SayHi
+// @Description SayHi测试，SayHi to everyone
+// @Produce text
+// @Tags 问候
+// @Markdown
+// ### 返回内容
+//
+// ```json
+//
+//	{
+//	  "message": "hello %s"
+//	}
+//
+// ```
+// @Markdown
+// @Router	/greet/sayhi [get]
+func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
+	// a type convert was needed
+	req := r.(*GreetRequest)
+	if req.Name == "QUIT" || req.Name == "QUIT_filtered" {
+		panic("test panic from greet")
+	}
+	return fmt.Sprintf("hello %s", req.Name), nil
+}
+
+// 显示当前时间
+// @Summary Show Time
+// @Description 显示当前时间
+// @Produce json
+// @Markdown
+// ### 返回内容
+//
+// ```json
+//
+//	{
+//	  "message": "2005-01-02"
+//	}
+//
+// ```
+// @Markdown
+// @Router	/time [get]
+func TimeLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
+	return "2005-01-02", nil
 }
 
 func LogMiddleware(f ginx.ApiHandlerFunc) ginx.ApiHandlerFunc {

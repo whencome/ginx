@@ -1,8 +1,8 @@
 package apidoc
 
 import (
-    "sort"
-    "fmt"
+	"fmt"
+	"sort"
 )
 
 // 版本
@@ -58,26 +58,42 @@ type MethodInfo struct {
 	Returns  []string // 返回值列表
 }
 
+// ApiReqParam api请求参数
+type ApiReqParam struct {
+	Name        string
+	Type        string
+	Required    bool
+	Description string
+}
+
 // ApiDocInfo 接口方法信息
 type ApiDocInfo struct {
-	Name    string `json:"name"`    // 接口方法名称
-	Path    string `json:"path"`    // 接口路径
-	Method  string `json:"method"`  // 请求方法，POST,GET,等
-	Group   string `json:"group"`   // 文档分组
-	Content string `json:"content"` // 接口文档内容
+	Hash        string        `json:"hash"`        // 接口hash值，用于防重
+	Name        string        `json:"name"`        // 接口方法名称
+	Description string        `json:"description"` // 接口描
+	MIME        string        `json:"mime"`        // 响应的MIME类型
+	Path        string        `json:"path"`        // 接口路径
+	Method      string        `json:"method"`      // 请求方法，POST,GET,等
+	Group       string        `json:"group"`       // 文档分组
+	Params      []ApiReqParam `params`             // 请求参数列表
+	ParamMD     string        `json:"param_md"`    // 请求参数, markdown内容
+	DocMd       string        `json:"content_md"`  // 接口文档扩展内容，markdown内容
 }
 
 func (doc *ApiDocInfo) ApiMap() KVMap {
-    return KVMap{
-        "api_type":"api", 
-        "doc":"No documentation found for this API", 
-        "doc_md":doc.Content, 
-        "method":doc.Method, 
-        "name":doc.Name, 
-        "name_extra":"", 
-        "router":doc.Group, 
-        "url":fmt.Sprintf("%s \t [%s]", doc.Path, doc.Method),
-    }
+	return KVMap{
+		"api_type":    "api",
+		"doc":         "",
+		"description": doc.Description,
+		"param_md":    doc.ParamMD,
+		"mime":        doc.MIME,
+		"doc_md":      doc.DocMd,
+		"method":      doc.Method,
+		"name":        doc.Name,
+		"name_extra":  "",
+		"router":      doc.Group,
+		"url":         fmt.Sprintf("%s\t[%s]", doc.Path, doc.Method),
+	}
 }
 
 // DocGroup 文档分组
@@ -100,6 +116,11 @@ func (dg *DocGroup) ToApiData() DataMap {
 		Groups: make([]*DocGroup, 0),
 	}
 	if len(dg.Docs) > 0 {
+		for _, doc := range dg.Docs {
+			if doc.Group == "" {
+				doc.Group = "默认"
+			}
+		}
 		defaulGroup.Docs = append(defaulGroup.Docs, dg.Docs...)
 	}
 	docGroups := make([]*DocGroup, 0)
@@ -117,11 +138,11 @@ func (dg *DocGroup) ToApiData() DataMap {
 }
 
 func (dg *DocGroup) GetDocMaps() RouterMap {
-    routerMap := make(RouterMap)
-    routerMap["children"] = make([]KVMap, 0)
-    // 添加文档
-    for _,doc := range dg.Docs {
-        routerMap["children"] = append(routerMap["children"], doc.ApiMap())
-    }
-    return routerMap
+	routerMap := make(RouterMap)
+	routerMap["children"] = make([]KVMap, 0)
+	// 添加文档
+	for _, doc := range dg.Docs {
+		routerMap["children"] = append(routerMap["children"], doc.ApiMap())
+	}
+	return routerMap
 }

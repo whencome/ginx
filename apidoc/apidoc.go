@@ -17,6 +17,9 @@ var docEnabled bool = true
 // 保存全局文档信息
 var apiDocs *DocGroup
 
+// 文档映射关系
+var docMaps map[string]*ApiDocInfo
+
 // 初始化全局对象
 func init() {
 	config = DefaultConfig()
@@ -28,6 +31,7 @@ func init() {
 		Docs:        make([]*ApiDocInfo, 0), // 文档列表
 	}
 	docParser = NewDocParser(config)
+	docMaps = make(map[string]*ApiDocInfo)
 }
 
 // DefaultConfig 生成一个默认配置
@@ -75,31 +79,40 @@ func Init(c *Config) {
 // r 请求结构体
 // f 接口方法
 func Parse(r, f interface{}) {
-	fmt.Println("--- 解析文档")
+	fmt.Println(">>> parse doc...")
 	if !docEnabled { // 文档未启用
-		fmt.Println("--- 解析文档: 文档未启用")
 		return
 	}
-	apiDoc := docParser.Parse(r, f)
+	doc := docParser.Parse(r, f)
 	// 忽略标题为空的文档
-	if apiDoc.Name == "" {
-		fmt.Println("--- 解析文档: 文档名称为空")
+	if doc.Name == "" {
 		return
 	}
+	doc.Hash = Md5Short(fmt.Sprintf("%s%s", doc.Name, doc.Path))
 	// 添加文档
-	AddDoc(&apiDoc)
+	AddDoc(&doc)
 }
 
 // AddDoc 添加文档
 func AddDoc(doc *ApiDocInfo) {
+	fmt.Println(">>> add doc...")
 	if doc.Name == "" {
 		return
 	}
+	fmt.Printf("doc: %s => %#v\n", doc.Hash, *doc)
+	// 进行文档重复性检查
+	if _, ok := docMaps[doc.Hash]; ok {
+		return
+	}
+	docMaps[doc.Hash] = doc
+
+	// 处理默认分组
 	groupName := strings.TrimSpace(doc.Group)
 	if groupName == "" {
 		apiDocs.Docs = append(apiDocs.Docs, doc)
 		return
 	}
+	// 将文档加入到分组
 	found := false
 	for _, g := range apiDocs.Groups {
 		if g.Name == groupName {

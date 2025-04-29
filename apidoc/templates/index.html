@@ -318,7 +318,9 @@ Author:
                 )
             },
             make_md(md, con) {
-                md += "### url" + "\n"
+                md += "### 接口描述" + "\n\n"
+                md += con.description + "\n\n"
+                md += "### 请求地址" + "\n\n"
                 var urls = new Array()
                 urls = con.url.split(" ")
                 if (urls.length == 1) {
@@ -328,15 +330,25 @@ Author:
                     md += "- " + urls[i].replace(/\t/g, " ").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\n\n"
                 }
                 if (con.api_type === "api") {
-                    md += "### method" + "\n"
+                    md += "### 请求方式" + "\n\n"
                     md += "- " + con.method + "\n\n"
+                    md += "### 响应内容" + "\n\n"
+                    md += "- " + con.mime + "\n\n"
                 }
+                md += "### 请求参数" + "\n\n"
+                if (con.param_md != "") {
+                    md += con.param_md + "\n\n"
+                } else {
+                    md += "- 无\n\n"
+                }
+                /*
                 if (con.doc == this.noDocText && con.doc_md != "") {
                 }
                 else {
                     md += "### doc" + "\n"
                     md += "```doc\n" + con.doc + "\n```\n\n"
                 }
+                */
                 return md
             },
             downloadDoc() {

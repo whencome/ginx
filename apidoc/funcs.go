@@ -1,6 +1,11 @@
 package apidoc
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"io"
+	"reflect"
+
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
@@ -53,4 +58,37 @@ func GetMIMEType(contentType string) string {
 		return mimetype
 	}
 	return "text/plain"
+}
+
+// Md5 生成md5 hash
+func Md5(str string) string {
+	h := md5.New()
+	io.WriteString(h, str)
+	cipherStr := h.Sum(nil)
+	return hex.EncodeToString(cipherStr)
+}
+
+// Md5Short 16位MD5
+func Md5Short(str string) string {
+	hexStr := Md5(str)
+	return string([]byte(hexStr)[8:24])
+}
+
+// IsNil 判断给定的值是否为nil
+func IsNil(i interface{}) bool {
+	ret := i == nil
+	// 需要进一步做判断
+	if !ret {
+		vi := reflect.ValueOf(i)
+		kind := reflect.ValueOf(i).Kind()
+		if kind == reflect.Slice ||
+			kind == reflect.Map ||
+			kind == reflect.Chan ||
+			kind == reflect.Interface ||
+			kind == reflect.Func ||
+			kind == reflect.Ptr {
+			return vi.IsNil()
+		}
+	}
+	return ret
 }

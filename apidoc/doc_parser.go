@@ -25,15 +25,19 @@ func NewDocParser(c *Config) *DocParser {
 // 解析文档
 func (p *DocParser) Parse(r, f interface{}) ApiDocInfo {
 	// 请求
-	reqStruct := p.ParseStruct(r)
+	reqStruct := p.ParseReqStruct(r)
 	// 方法
 	methodInfo := p.GetMethodInfo(f)
+	fmt.Printf("|%s|", methodInfo.Comment)
 	// 构建文档
 	return p.buildDoc(reqStruct, methodInfo)
 }
 
 // 获取方法信息
 func (p *DocParser) GetMethodInfo(method interface{}) MethodInfo {
+	if IsNil(method) {
+		return MethodInfo{}
+	}
 	// 获取方法的反射值
 	methodValue := reflect.ValueOf(method)
 	if methodValue.Kind() != reflect.Func {
@@ -196,8 +200,11 @@ func (p *DocParser) getFieldComment(structType reflect.Type, fieldName string) s
 	return ""
 }
 
-// ParseStruct 解析结构体信息
-func (p *DocParser) ParseStruct(v interface{}) StructInfo {
+// ParseReqStruct 解析请求参数结构体信息
+func (p *DocParser) ParseReqStruct(v interface{}) StructInfo {
+	if IsNil(v) {
+		return StructInfo{}
+	}
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -239,7 +246,7 @@ func (p *DocParser) ParseStruct(v interface{}) StructInfo {
 
 		// 处理嵌套结构体
 		if field.Type.Kind() == reflect.Struct {
-			childStruct := p.ParseStruct(field.Type)
+			childStruct := p.ParseReqStruct(field.Type)
 			childStruct.Name = field.Name
 			childStruct.Desc = comment
 			fileInf.Struct = childStruct
@@ -252,35 +259,13 @@ func (p *DocParser) ParseStruct(v interface{}) StructInfo {
 
 // buildDoc 构建文档
 func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
-	apiDoc := ApiDocInfo{
-		Name:    "", // 接口方法名称，这里是注解名称，用于展示，对应注解@Summary
-		Path:    "", // 接口路径，对应注解@Router
-		Method:  "", // 请求方法，POST,GET,等，对应注解@Router
-		Content: "", // 接口文档内容
-	}
-
-	// 先解析请求
-	reqParamMD := ""
-	if req.Name != "" {
-		reqParamMD += `
-|参数名|必选|类型|说明|
-|:----|:----|:----|----|`
-		for _, field := range req.Fields {
-			reqParamMD += `
-            ` + fmt.Sprintf("|%s|%s|%s|%s|\n", field.Name, field.Required, field.Type, field.Desc)
-		}
-	} else {
-		reqParamMD += `
-            ` + "- 无"
-	}
-
-	// 定义文档元素变量
-	var description, mimeType string
-
+	apiDoc := ApiDocInfo{}
 	// 解析接口文档
 	funcComment := strings.TrimSpace(method.Comment)
 	lines := strings.Split(funcComment, "\n")
 	openMarkdown := false
+	// 标识是否单独定义了参数，如果是，则不解析结构体
+	definedParam := false
 	markdown := bytes.Buffer{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -303,7 +288,7 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 				continue
 			}
 			if strings.HasPrefix(line, "@Description") {
-				description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
+				apiDoc.Description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
 				continue
 			}
 			if strings.HasPrefix(line, "@Router") {
@@ -327,47 +312,90 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 			}
 			if strings.HasPrefix(line, "@Produce") {
 				produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
-				mimeType = GetMIMEType(produce)
+				apiDoc.MIME = GetMIMEType(produce)
+				continue
+			}
+			if strings.HasPrefix(line, "@Param") {
+				definedParam = true
+				reqParam, ok := p.parseParam(strings.TrimSpace(strings.TrimPrefix(line, "@Param")))
+				if ok {
+					apiDoc.Params = append(apiDoc.Params, reqParam)
+				}
 				continue
 			}
 		}
 	}
-
-	// 构造文档内容
-	doc := bytes.Buffer{}
-	// 标题
-	doc.WriteString("## " + apiDoc.Name)
-	doc.WriteString("\n\n")
-	// 描述
-	doc.WriteString("### 接口描述")
-	doc.WriteString("\n\n")
-	doc.WriteString(description)
-	doc.WriteString("\n\n")
-	// 请求地址及方式
-	doc.WriteString("### 请求地址")
-	doc.WriteString("\n\n")
-	doc.WriteString(apiDoc.Path)
-	doc.WriteString("\n\n")
-	doc.WriteString("### 请求方式")
-	doc.WriteString("\n\n")
-	doc.WriteString(apiDoc.Method)
-	doc.WriteString("\n\n")
-	doc.WriteString("### 响应内容类型")
-	doc.WriteString("\n\n")
-	doc.WriteString(mimeType)
-	doc.WriteString("\n\n")
-	// 请求参数
-	doc.WriteString("### 请求参数")
-	doc.WriteString("\n\n")
-	doc.WriteString(reqParamMD)
-	doc.WriteString("\n\n")
-	// 其他内容，暂时解析markdown内容
-	doc.WriteString(markdown.String())
-	doc.WriteString("\n\n")
+	if definedParam {
+		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
+	} else {
+		apiDoc.ParamMD = p.buildParamMDByStruct(req)
+	}
 
 	// 解析接口内容为html
-	docHtml := Markdown2Html(doc.String())
-	apiDoc.Content = docHtml
+	apiDoc.DocMd = markdown.String()
 
 	return apiDoc
+}
+
+// parseParam 解析参数
+func (p *DocParser) parseParam(param string) (ApiReqParam, bool) {
+	reqParam := ApiReqParam{}
+	if strings.ToLower(param) == "none" {
+		return reqParam, false
+	}
+	chars := []rune(param)
+	pos := 0
+	openQuote := false
+	data := make([]rune, 0)
+	writeData := false
+	for _, char := range chars {
+		if char == '"' {
+			openQuote = !openQuote
+			writeData = true
+		} else if char == ' ' && !openQuote {
+			writeData = true
+		} else {
+			data = append(data, char)
+		}
+		if writeData {
+			writeData = false
+			switch pos {
+			case 0:
+				reqParam.Name = string(data)
+			case 1:
+				reqParam.Type = string(data)
+			case 2:
+				reqParam.Required = strings.ToLower(string(data)) == "true"
+			case 3:
+				reqParam.Description = string(data)
+			}
+			pos++
+		}
+	}
+	return reqParam, true
+}
+
+func (p *DocParser) buildParamMDByParams(params []ApiReqParam) string {
+	reqParamMD := `
+|参数名|必选|类型|说明|
+|:----|:----|:----|----|
+`
+	for _, param := range params {
+		reqParamMD += fmt.Sprintf("|%s|%v|%s|%s|\n", param.Name, param.Required, param.Type, param.Description)
+	}
+	return reqParamMD
+}
+
+func (p *DocParser) buildParamMDByStruct(req StructInfo) string {
+	reqParamMD := ""
+	if req.Name != "" {
+		reqParamMD += `
+|参数名|必选|类型|说明|
+|:----|:----|:----|----|
+`
+		for _, field := range req.Fields {
+			reqParamMD += fmt.Sprintf("|%s|%v|%s|%s|\n", field.Tag, field.Required, field.Type, field.Desc)
+		}
+	}
+	return reqParamMD
 }
