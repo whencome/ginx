@@ -332,14 +332,16 @@ Author:
                 if (con.api_type === "api") {
                     md += "### 请求方式" + "\n\n"
                     md += "- " + con.method + "\n\n"
-                    md += "### 响应内容" + "\n\n"
-                    md += "- " + con.mime + "\n\n"
                 }
                 md += "### 请求参数" + "\n\n"
                 if (con.param_md != "") {
                     md += con.param_md + "\n\n"
                 } else {
                     md += "- 无\n\n"
+                }
+                if (con.mime != "") {
+                    md += "### 响应格式" + "\n\n"
+                    md += "- " + con.mime + "\n\n"
                 }
                 /*
                 if (con.doc == this.noDocText && con.doc_md != "") {

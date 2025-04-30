@@ -76,6 +76,7 @@ func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 // @Summary Show Time
 // @Description 显示当前时间
 // @Produce json
+// @Param timezone string false 时区
 // @Markdown
 // ### 返回内容
 //
@@ -86,6 +87,13 @@ func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 //	}
 //
 // ```
+//
+// **返回值说明**
+//
+// | 字段 | 类型 | 说明 |
+// | --- | --- | --- |
+// | message | string | 当前时间 |
+//
 // @Markdown
 // @Router	/time [get]
 func TimeLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {

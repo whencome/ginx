@@ -369,7 +369,20 @@ func (p *DocParser) parseParam(param string) (ApiReqParam, bool) {
 			case 3:
 				reqParam.Description = string(data)
 			}
+			data = make([]rune, 0)
 			pos++
+		}
+	}
+	if len(data) > 0 {
+		switch pos {
+		case 0:
+			reqParam.Name = string(data)
+		case 1:
+			reqParam.Type = string(data)
+		case 2:
+			reqParam.Required = strings.ToLower(string(data)) == "true"
+		case 3:
+			reqParam.Description = string(data)
 		}
 	}
 	return reqParam, true
