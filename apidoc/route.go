@@ -65,21 +65,24 @@ func verifyPassword(passwordSha2 string) gin.HandlerFunc {
 }
 
 // RegisterDoc 注册文档路由
-func RegisterDoc(r *gin.Engine) (err error) {
+func RegisterDoc(r *gin.Engine, middlewares ...gin.HandlerFunc) (err error) {
 	if err := initTemplates(); err != nil {
 		return err
 	}
 	// 获取api数据
 	dataMap := apiDocs.ToApiData()
+	
+	g0 := r.Group("")
+	g0.Use(middlewares...)
 
-	r.Static(config.UrlPrefix+"/static", filepath.Join(rootPath, "static"))
+	g0.Static(config.UrlPrefix+"/static", filepath.Join(rootPath, "static"))
 
-	r.GET(config.UrlPrefix+"/", func(c *gin.Context) {
+	g0.GET(config.UrlPrefix+"/", func(c *gin.Context) {
 		c.Header("Content-Type", "text/html; charset=utf-8")
 		c.String(http.StatusOK, renderHtml())
 	})
 
-	r.GET(config.UrlPrefix+"/data",
+	g0.GET(config.UrlPrefix+"/data",
 		verifyPassword(config.PasswordSha2),
 		func(c *gin.Context) {
 			urlPrefix := config.UrlPrefix

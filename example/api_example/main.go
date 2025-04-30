@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/whencome/ginx"
@@ -47,12 +48,17 @@ func main() {
 	svr.Wait()
 }
 
+// LogAccess 一个测试中间件
+func LogAccess(c *gin.Context) {
+	fmt.Println(time.Now().String())
+}
+
 func initRoutes(r *gin.Engine) {
 	r.GET("/greet", ginx.NewApiHandler(GreetRequest{}, GreetLogic))
 	r.GET("/greet_middleware", ginx.NewApiHandler(GreetRequest{}, GreetLogic, LogMiddleware, FilterMiddleware))
 	r.GET("/greet/sayhi", ginx.NewApiHandler(SayHiRequest{}, SayHiLogic))
 	r.GET("/time", ginx.NewApiHandler(nil, TimeLogic))
-	apidoc.RegisterDoc(r)
+	apidoc.RegisterDoc(r, LogAccess)
 }
 
 // Recover a middleware to capture panics
