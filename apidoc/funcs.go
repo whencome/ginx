@@ -92,3 +92,18 @@ func IsNil(i interface{}) bool {
 	}
 	return ret
 }
+
+// IsStruct 判断给定对象是否是一个结构体
+func IsStruct(v interface{}) bool {
+	if IsNil(v) {
+		return false
+	}
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Struct {
+		return true
+	}
+	return false
+}

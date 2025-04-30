@@ -2,6 +2,7 @@ package apidoc
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -25,16 +26,15 @@ func NewDocParser(c *Config) *DocParser {
 // 解析文档
 func (p *DocParser) Parse(r, f interface{}) ApiDocInfo {
 	// 请求
-	reqStruct := p.ParseReqStruct(r)
+	reqStruct := p.ParseRequest(r)
 	// 方法
-	methodInfo := p.GetMethodInfo(f)
-	fmt.Printf("|%s|", methodInfo.Comment)
+	methodInfo := p.ParseMethodInfo(f)
 	// 构建文档
 	return p.buildDoc(reqStruct, methodInfo)
 }
 
 // 获取方法信息
-func (p *DocParser) GetMethodInfo(method interface{}) MethodInfo {
+func (p *DocParser) ParseMethodInfo(method interface{}) MethodInfo {
 	if IsNil(method) {
 		return MethodInfo{}
 	}
@@ -200,11 +200,79 @@ func (p *DocParser) getFieldComment(structType reflect.Type, fieldName string) s
 	return ""
 }
 
-// ParseReqStruct 解析请求参数结构体信息
-func (p *DocParser) ParseReqStruct(v interface{}) StructInfo {
+// ParseRequest 解析请求参数结构体信息
+// 这是一个定制化的接口，用于gin通过Bind方式绑定参数的请求解析
+func (p *DocParser) ParseRequest(v interface{}) RequestInfo {
+	if IsNil(v) {
+		return RequestInfo{}
+	}
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return RequestInfo{}
+	}
+
+	// 结构体信息
+	structInf := RequestInfo{
+		Name:   t.Name(),              // 结构体名称
+		Desc:   p.getStructComment(t), // 结构体描述
+		Fields: make([]FormField, 0),  // 字段信息
+	}
+
+	// 解析字段
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		// 显示字段名
+		showFieldName := field.Tag.Get("form")
+		if showFieldName == "" {
+			showFieldName = field.Name
+		}
+		// 字段描述
+		fieldDesc := field.Tag.Get("desc")
+		if fieldDesc == "" {
+			fieldDesc = p.getFieldComment(t, field.Name)
+		}
+		// 是否必填
+		required := false
+		binding := field.Tag.Get("binding")
+		if strings.Contains(binding, "required") {
+			required = true
+		}
+
+		// 字段信息
+		fieldInf := FormField{
+			Name:     field.Name,
+			IsStruct: false,
+			Required: required,
+			Type:     field.Type.String(),
+			Tag:      showFieldName,
+			Desc:     fieldDesc,
+		}
+
+		// 处理嵌套结构体
+		if field.Type.Kind() == reflect.Struct {
+			childStruct := p.ParseRequest(field.Type)
+			childStruct.Name = field.Name
+			childStruct.Desc = fieldDesc
+			fieldInf.IsStruct = true
+			fieldInf.Struct = childStruct
+		}
+		structInf.Fields = append(structInf.Fields, fieldInf)
+	}
+
+	return structInf
+}
+
+// ParseStruct 解析通用的结构体信息
+func (p *DocParser) ParseStruct(v interface{}) StructInfo {
+	// 如果对象为nil，则不处理
 	if IsNil(v) {
 		return StructInfo{}
 	}
+
+	// 获取结构体反射类型
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -216,49 +284,49 @@ func (p *DocParser) ParseReqStruct(v interface{}) StructInfo {
 	// 结构体信息
 	structInf := StructInfo{
 		Name:   t.Name(),              // 结构体名称
-		Desc:   p.getStructComment(t), //  结构体描述
+		Desc:   p.getStructComment(t), // 结构体描述
 		Fields: make([]FieldInfo, 0),  // 字段信息
 	}
-
-	// 解析字段
+	// 解析字段信息
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		tagValue := field.Tag.Get(p.conf.FieldTag)
-		if tagValue == "" {
-			tagValue = field.Name
+		// 解析显示字段
+		showFieldName := field.Name
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" && jsonTag != "-" {
+			if strings.Contains(jsonTag, ",") {
+				jsonTag = jsonTag[:strings.Index(jsonTag, ",")]
+			}
+			showFieldName = jsonTag
 		}
-		comment := p.getFieldComment(t, field.Name)
-		// 是否必填
-		required := false
-		binding := field.Tag.Get("binding")
-		if strings.Contains(binding, "required") {
-			required = true
-		}
+		// 解析注释说明，应当放在desc标签中
+		descTag := field.Tag.Get("desc")
 
 		// 字段信息
-		fileInf := FieldInfo{
+		fieldInf := FieldInfo{
 			Name:     field.Name,
-			Required: required,
+			Tag:      showFieldName,
+			IsStruct: false,
 			Type:     field.Type.String(),
-			Tag:      tagValue,
-			Desc:     comment,
+			Desc:     descTag,
 		}
 
 		// 处理嵌套结构体
 		if field.Type.Kind() == reflect.Struct {
-			childStruct := p.ParseReqStruct(field.Type)
+			childStruct := p.ParseStruct(field.Type)
 			childStruct.Name = field.Name
-			childStruct.Desc = comment
-			fileInf.Struct = childStruct
+			childStruct.Desc = descTag
+			fieldInf.IsStruct = true
+			fieldInf.Struct = childStruct
 		}
-		structInf.Fields = append(structInf.Fields, fileInf)
+		structInf.Fields = append(structInf.Fields, fieldInf)
 	}
 
 	return structInf
 }
 
 // buildDoc 构建文档
-func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
+func (p *DocParser) buildDoc(req RequestInfo, method MethodInfo) ApiDocInfo {
 	apiDoc := ApiDocInfo{}
 	// 解析接口文档
 	funcComment := strings.TrimSpace(method.Comment)
@@ -266,6 +334,8 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 	openMarkdown := false
 	// 标识是否单独定义了参数，如果是，则不解析结构体
 	definedParam := false
+	// 响应结果
+	respStructName := ""
 	markdown := bytes.Buffer{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -323,12 +393,33 @@ func (p *DocParser) buildDoc(req StructInfo, method MethodInfo) ApiDocInfo {
 				}
 				continue
 			}
+			if strings.HasPrefix(line, "@Request") {
+				if req.Name != "" { // 优先使用注册路由时使用的结构体
+					continue
+				}
+				structName := strings.TrimSpace(strings.TrimPrefix(line, "@Request"))
+				if structName == "" {
+					continue
+				}
+				if structVal, ok := registeredTypes[structName]; ok {
+					req = p.ParseRequest(structVal)
+				}
+				continue
+			}
+			if strings.HasPrefix(line, "@Response") {
+				respStructName = strings.TrimSpace(strings.TrimPrefix(line, "@Response"))
+				continue
+			}
 		}
 	}
 	if definedParam {
 		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
 	} else {
 		apiDoc.ParamMD = p.buildParamMDByStruct(req)
+	}
+
+	if respStructName != "" {
+		apiDoc.RespMD = p.buildRespMDByStruct(respStructName)
 	}
 
 	// 解析接口内容为html
@@ -388,6 +479,7 @@ func (p *DocParser) parseParam(param string) (ApiReqParam, bool) {
 	return reqParam, true
 }
 
+// buildParamMDByParams 根据@Param定义的参数解析请求参数markdown内容
 func (p *DocParser) buildParamMDByParams(params []ApiReqParam) string {
 	reqParamMD := `
 |参数名|必选|类型|说明|
@@ -399,7 +491,8 @@ func (p *DocParser) buildParamMDByParams(params []ApiReqParam) string {
 	return reqParamMD
 }
 
-func (p *DocParser) buildParamMDByStruct(req StructInfo) string {
+// buildParamMDByStruct 根据注册路由时使用的结构体或者通过@Request定义的结构体解析markdown内容
+func (p *DocParser) buildParamMDByStruct(req RequestInfo) string {
 	reqParamMD := ""
 	if req.Name != "" {
 		reqParamMD += `
@@ -408,6 +501,50 @@ func (p *DocParser) buildParamMDByStruct(req StructInfo) string {
 `
 		for _, field := range req.Fields {
 			reqParamMD += fmt.Sprintf("|%s|%v|%s|%s|\n", field.Tag, field.Required, field.Type, field.Desc)
+		}
+	}
+	return reqParamMD
+}
+
+// buildRespMDByStruct 根据注册的结构体（structName）解析响应结果内容
+func (p *DocParser) buildRespMDByStruct(structName string) string {
+	// 注册名称为空或者未找到结构体，不予解析
+	if structName == "" {
+		return ""
+	}
+	structVal, ok := registeredTypes[structName]
+	if !ok {
+		return ""
+	}
+	// 解析响应结构体对象
+	obj := p.ParseStruct(structVal)
+	// 解析为markdown内容
+	respMD := ""
+	if obj.Name == "" {
+		return respMD
+	}
+	respMD += `
+|参数名|类型|说明|
+|:----|:----|----|
+`
+	respMD += p.buildStructMD(obj, "")
+
+	// 添加相应结果示例
+	jsonDemo, err := json.MarshalIndent(structVal, "", "    ")
+	if err == nil {
+		respMD += fmt.Sprintf("\n\n**示例**\n\n```json\n%s\n```\n", string(jsonDemo))
+	}
+
+	return respMD
+}
+
+// buildStructMD 构造结构体markdown内容，主要用于响应结果解析
+func (p *DocParser) buildStructMD(obj StructInfo, fieldPrefix string) string {
+	reqParamMD := ""
+	for _, field := range obj.Fields {
+		reqParamMD += fmt.Sprintf("|%s|%s|%s|\n", fieldPrefix+field.Tag, field.Type, field.Desc)
+		if field.IsStruct {
+			reqParamMD += p.buildStructMD(field.Struct, fieldPrefix+field.Tag+".")
 		}
 	}
 	return reqParamMD

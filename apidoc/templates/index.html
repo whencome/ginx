@@ -351,6 +351,10 @@ Author:
                     md += "```doc\n" + con.doc + "\n```\n\n"
                 }
                 */
+                if (con.api_type === "api" && con.resp_md != "") {
+                    md += "### 响应结果" + "\n\n"
+                    md += con.resp_md + "\n\n"
+                }
                 return md
             },
             downloadDoc() {

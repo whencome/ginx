@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/whencome/ginx"
+
+	_ "github.com/whencome/ginx/example/api_example/response"
 )
 
 // GreetRequest 打招呼请求
@@ -57,7 +59,7 @@ func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 // ```json
 //
 //	{
-//	  "message": "hello %s"
+//	    "message": "hello %s"
 //	}
 //
 // ```
@@ -77,13 +79,14 @@ func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 // @Description 显示当前时间
 // @Produce json
 // @Param timezone string false 时区
+// @Response TimeResponse
 // @Markdown
 // ### 返回内容
 //
 // ```json
 //
 //	{
-//	  "message": "2005-01-02"
+//	    "message": "2005-01-02"
 //	}
 //
 // ```

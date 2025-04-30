@@ -32,6 +32,24 @@ type Config struct {
 	PasswordSha2 string
 }
 
+// RequestInfo 请求参数(结构体)信息
+type RequestInfo struct {
+	Name   string      `json:"name"`   // 结构体名称
+	Desc   string      `json:"desc"`   //  结构体描述
+	Fields []FormField `json:"fields"` // 字段信息
+}
+
+// FormField 请求字段信息
+type FormField struct {
+	Name     string      `json:"name"`      // 字段名称
+	IsStruct bool        `json:"is_struct"` // 是否是结构体
+	Required bool        `json:"required"`  // 是否必填
+	Type     string      `json:"type"`      // 字段类型
+	Desc     string      `json:"desc"`      // 字段描述
+	Tag      string      `json:"tag"`       // 字段标签
+	Struct   RequestInfo `json:"struct"`    // 如果是结构体，则包含字段信息
+}
+
 // StructInfo 结构体信息
 type StructInfo struct {
 	Name   string      `json:"name"`   // 结构体名称
@@ -41,12 +59,12 @@ type StructInfo struct {
 
 // FieldInfo 字段信息
 type FieldInfo struct {
-	Name     string     `json:"name"`     // 字段名称
-	Required bool       `json:"required"` // 是否必填
-	Type     string     `json:"type"`     // 字段类型
-	Desc     string     `json:"desc"`     // 字段描述
-	Tag      string     `json:"tag"`      // 字段标签
-	Struct   StructInfo `json:"fields"`   // 如果是结构体，则包含字段信息
+	Name     string     `json:"name"`      // 字段名称
+	IsStruct bool       `json:"is_struct"` // 是否是结构体
+	Type     string     `json:"type"`      // 字段类型
+	Desc     string     `json:"desc"`      // 字段描述
+	Tag      string     `json:"tag"`       // 字段标签，实际展示的字段名称
+	Struct   StructInfo `json:"struct"`    // 如果是结构体，则包含字段信息
 }
 
 // 方法信息结构
@@ -77,6 +95,7 @@ type ApiDocInfo struct {
 	Group       string        `json:"group"`       // 文档分组
 	Params      []ApiReqParam `params`             // 请求参数列表
 	ParamMD     string        `json:"param_md"`    // 请求参数, markdown内容
+	RespMD      string        `json:"resp_md"`     // 响应结果，markdown内容
 	DocMd       string        `json:"content_md"`  // 接口文档扩展内容，markdown内容
 }
 
@@ -84,12 +103,13 @@ func (doc *ApiDocInfo) ApiMap() KVMap {
 	return KVMap{
 		"api_type":    "api",
 		"doc":         "",
+		"name":        doc.Name,
+		"method":      doc.Method,
 		"description": doc.Description,
 		"param_md":    doc.ParamMD,
 		"mime":        doc.MIME,
+		"resp_md":     doc.RespMD,
 		"doc_md":      doc.DocMd,
-		"method":      doc.Method,
-		"name":        doc.Name,
 		"name_extra":  "",
 		"router":      doc.Group,
 		"url":         fmt.Sprintf("%s\t[%s]", doc.Path, doc.Method),

@@ -36,10 +36,6 @@ var templateMap = KVMap{
 	"js_template_local":  "",
 }
 
-// var docMap = make(map[string]KVMap)
-
-// var pkgMap = make(map[string][]string)
-
 func initTemplates() error {
 	rootPath = getRootPath()
 	if err := readTemplate(rootPath); err != nil {
@@ -68,8 +64,8 @@ func verifyPassword(passwordSha2 string) gin.HandlerFunc {
 	}
 }
 
-// Register 注册文档路由
-func Register(r *gin.Engine) (err error) {
+// RegisterDoc 注册文档路由
+func RegisterDoc(r *gin.Engine) (err error) {
 	if err := initTemplates(); err != nil {
 		return err
 	}

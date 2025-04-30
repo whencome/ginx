@@ -20,6 +20,9 @@ var apiDocs *DocGroup
 // 文档映射关系
 var docMaps map[string]*ApiDocInfo
 
+// 保存全局注册的结构体
+var registeredTypes = make(map[string]interface{})
+
 // 初始化全局对象
 func init() {
 	config = DefaultConfig()
@@ -75,11 +78,28 @@ func Init(c *Config) {
 	docParser = NewDocParser(c)
 }
 
+// RegisterStruct 注册结构体
+func RegisterStruct(typeName string, v interface{}) {
+	if !IsStruct(v) {
+		return
+	}
+	registeredTypes[typeName] = v
+}
+
+// RegisterStructs 批量注册结构体信息
+func RegisterStructs(strcutMaps map[string]interface{}) {
+	if len(strcutMaps) == 0 {
+		return
+	}
+	for name, structV := range strcutMaps {
+		RegisterStruct(name, structV)
+	}
+}
+
 // Parse 解析文档
 // r 请求结构体
 // f 接口方法
 func Parse(r, f interface{}) {
-	fmt.Println(">>> parse doc...")
 	if !docEnabled { // 文档未启用
 		return
 	}
@@ -95,11 +115,9 @@ func Parse(r, f interface{}) {
 
 // AddDoc 添加文档
 func AddDoc(doc *ApiDocInfo) {
-	fmt.Println(">>> add doc...")
 	if doc.Name == "" {
 		return
 	}
-	fmt.Printf("doc: %s => %#v\n", doc.Hash, *doc)
 	// 进行文档重复性检查
 	if _, ok := docMaps[doc.Hash]; ok {
 		return
