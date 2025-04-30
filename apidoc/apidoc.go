@@ -11,9 +11,6 @@ var config *Config
 // 文档解析器
 var docParser *DocParser
 
-// 是否启用文档
-var docEnabled bool = true
-
 // 保存全局文档信息
 var apiDocs *DocGroup
 
@@ -33,8 +30,8 @@ func init() {
 		Groups:      make([]*DocGroup, 0),   // 子分组
 		Docs:        make([]*ApiDocInfo, 0), // 文档列表
 	}
-	docParser = NewDocParser(config)
 	docMaps = make(map[string]*ApiDocInfo)
+	Init(config)
 }
 
 // DefaultConfig 生成一个默认配置
@@ -53,8 +50,6 @@ func DefaultConfig() *Config {
 
 		// 是否启用文档
 		EnableDoc: true,
-		// 解析的字段标签名称，默认json
-		FieldTag: "form",
 
 		// SHA256 encrypted authorization password, e.g. here is admin
 		// echo -n admin | shasum -a 256
@@ -63,7 +58,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Init 初始化配置
+// Init 初始化配置，此方法应当在注册业务路由之前调用，否则无法解析接口文档
 func Init(c *Config) {
 	if c == nil {
 		c = DefaultConfig()
@@ -74,8 +69,7 @@ func Init(c *Config) {
 	}
 	// 初始化全局对象
 	config = c
-	docEnabled = c.EnableDoc
-	docParser = NewDocParser(c)
+	docParser = NewDocParser()
 }
 
 // RegisterStruct 注册结构体
@@ -100,7 +94,7 @@ func RegisterStructs(strcutMaps map[string]interface{}) {
 // r 请求结构体
 // f 接口方法
 func Parse(r, f interface{}) {
-	if !docEnabled { // 文档未启用
+	if !config.EnableDoc { // 文档未启用
 		return
 	}
 	doc := docParser.Parse(r, f)

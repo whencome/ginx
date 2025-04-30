@@ -13,14 +13,10 @@ import (
 )
 
 // DocParser 文档解析器
-type DocParser struct {
-	conf *Config
-}
+type DocParser struct{}
 
-func NewDocParser(c *Config) *DocParser {
-	return &DocParser{
-		conf: c,
-	}
+func NewDocParser() *DocParser {
+	return &DocParser{}
 }
 
 // 解析文档
