@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"reflect"
-	"runtime"
 	"strings"
 )
 
@@ -35,7 +34,7 @@ func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
 		value := keyvals[i+1]
 		switch notation {
 		case "@Markdown":
-			apiDoc.DocMd = value.(string)
+			apiDoc.DocMD = value.(string)
 		case "@Summary":
 			apiDoc.Name = value.(string)
 		case "@Description":
@@ -183,7 +182,7 @@ func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 		}
 	}
 
-	apiDoc.DocMd = markdown.String()
+	apiDoc.DocMD = markdown.String()
 
 	return apiDoc
 }
@@ -227,107 +226,6 @@ func (p *DocParser) paeseNestingFormFields(fields []FormField) []FormField {
 		}
 	}
 	return dstFields
-}
-
-// 获取方法信息
-func (p *DocParser) ParseMethodInfo(method interface{}) MethodInfo {
-	if IsNil(method) {
-		return MethodInfo{}
-	}
-	// 获取方法的反射值
-	methodValue := reflect.ValueOf(method)
-	if methodValue.Kind() != reflect.Func {
-		return MethodInfo{}
-	}
-
-	// 获取方法指针
-	methodPtr := runtime.FuncForPC(methodValue.Pointer())
-	if methodPtr == nil {
-		return MethodInfo{}
-	}
-
-	// 解析方法名称
-	fullName := methodPtr.Name()
-	parts := strings.Split(fullName, ".")
-	methodName := parts[len(parts)-1]
-
-	// 确定接收者类型
-	var receiver string
-	if len(parts) > 2 {
-		// 方法有接收者
-		receiver = parts[len(parts)-2]
-		// 去掉前面的(*)
-		receiver = strings.TrimPrefix(receiver, "(")
-		receiver = strings.TrimPrefix(receiver, "*")
-		receiver = strings.TrimSuffix(receiver, ")")
-	}
-
-	// 获取方法注释
-	comment := p.getMethodComment(methodPtr)
-
-	// 获取参数和返回值类型
-	paramTypes, returnTypes := p.getMethodSignature(methodValue.Type())
-
-	return MethodInfo{
-		Name:     methodName,
-		Receiver: receiver,
-		Comment:  comment,
-		Params:   paramTypes,
-		Returns:  returnTypes,
-	}
-}
-
-// 获取方法签名信息
-func (p *DocParser) getMethodSignature(methodType reflect.Type) (params, returns []string) {
-	// 获取参数类型
-	for i := 0; i < methodType.NumIn(); i++ {
-		params = append(params, methodType.In(i).String())
-	}
-
-	// 获取返回值类型
-	for i := 0; i < methodType.NumOut(); i++ {
-		returns = append(returns, methodType.Out(i).String())
-	}
-
-	return params, returns
-}
-
-// 获取方法注释
-func (p *DocParser) getMethodComment(method *runtime.Func) string {
-	filePath, _ := method.FileLine(0)
-	if filePath == "" {
-		return ""
-	}
-
-	// 解析源文件
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
-	if err != nil {
-		return ""
-	}
-
-	// 查找方法对应的AST节点
-	methodName := method.Name()
-	parts := strings.Split(methodName, ".")
-	shortName := parts[len(parts)-1]
-
-	for _, decl := range file.Decls {
-		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-			if funcDecl.Name.Name == shortName {
-				if funcDecl.Doc != nil {
-					// 提取注释文本
-					var lines []string
-					for _, comment := range funcDecl.Doc.List {
-						lines = append(lines, strings.TrimSpace(strings.TrimPrefix(comment.Text, "//")))
-					}
-					return strings.Join(lines, "\n")
-				}
-				return ""
-			}
-		}
-	}
-
-	return ""
 }
 
 // 获取结构体注释

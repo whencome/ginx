@@ -96,7 +96,7 @@ type ApiDocInfo struct {
 	Params      []ApiReqParam `params`             // 请求参数列表
 	ParamMD     string        `json:"param_md"`    // 请求参数, markdown内容
 	RespMD      string        `json:"resp_md"`     // 响应结果，markdown内容
-	DocMd       string        `json:"content_md"`  // 接口文档扩展内容，markdown内容
+	DocMD       string        `json:"content_md"`  // 接口文档扩展内容，markdown内容
 }
 
 func (doc *ApiDocInfo) ApiMap() KVMap {
@@ -109,7 +109,7 @@ func (doc *ApiDocInfo) ApiMap() KVMap {
 		"param_md":    doc.ParamMD,
 		"mime":        doc.MIME,
 		"resp_md":     doc.RespMD,
-		"doc_md":      doc.DocMd,
+		"doc_md":      doc.DocMD,
 		"name_extra":  "",
 		"router":      doc.Group,
 		"url":         fmt.Sprintf("%s\t[%s]", doc.Path, doc.Method),
@@ -128,9 +128,9 @@ type DocGroup struct {
 // ToApiData 将文档分组转换为api数据
 func (dg DocGroup) ToApiData() DataMap {
 	docMap := make(DataMap)
-	// 默认分组
-	defaulGroup := &DocGroup{
-		Name:   "默认",
+	// 未分组文档
+	noGroup := &DocGroup{
+		Name:   "未分组",
 		Sort:   1,
 		Docs:   make([]*ApiDocInfo, 0),
 		Groups: make([]*DocGroup, 0),
@@ -138,13 +138,15 @@ func (dg DocGroup) ToApiData() DataMap {
 	if len(dg.Docs) > 0 {
 		for _, doc := range dg.Docs {
 			if doc.Group == "" {
-				doc.Group = "默认"
+				doc.Group = "未分组"
 			}
 		}
-		defaulGroup.Docs = append(defaulGroup.Docs, dg.Docs...)
+		noGroup.Docs = append(noGroup.Docs, dg.Docs...)
 	}
 	docGroups := make([]*DocGroup, 0)
-	docGroups = append(docGroups, defaulGroup)
+	if len(noGroup.Docs) > 0 {
+		docGroups = append(docGroups, noGroup)
+	}
 	docGroups = append(docGroups, dg.Groups...)
 	// 对分组进行排序
 	sort.Slice(docGroups, func(i, j int) bool {
