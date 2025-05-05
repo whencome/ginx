@@ -75,20 +75,6 @@ func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
 		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
 	} else {
 		p.parseRequestInfo(apiDoc, request)
-		// var req RequestInfo
-		// if IsStruct(request) { // 如果直接传入的结构体，则直接解析
-		// 	req = p.ParseRequest(request)
-		// } else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
-		// 	structName, ok := request.(string)
-		// 	if ok {
-		// 		if structVal, ok := registeredTypes[structName]; ok {
-		// 			req = p.ParseRequest(structVal)
-		// 		}
-		// 	}
-		// }
-		// if req.Name != "" {
-		// 	apiDoc.ParamMD = p.buildParamMDByStruct(req)
-		// }
 	}
 
 	// 解析响应结果
@@ -116,7 +102,7 @@ func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 	definedParam := false
 	// 响应结果
 	respStructName := ""
-	req := RequestInfo{}
+	reqStructName := ""
 	markdown := bytes.Buffer{}
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -175,16 +161,7 @@ func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 				continue
 			}
 			if strings.HasPrefix(line, "@Request") {
-				if req.Name != "" { // 优先使用注册路由时使用的结构体
-					continue
-				}
-				structName := strings.TrimSpace(strings.TrimPrefix(line, "@Request"))
-				if structName == "" {
-					continue
-				}
-				if structVal, ok := registeredTypes[structName]; ok {
-					req = p.ParseRequest(structVal)
-				}
+				reqStructName = strings.TrimSpace(strings.TrimPrefix(line, "@Request"))
 				continue
 			}
 			if strings.HasPrefix(line, "@Response") {
@@ -197,7 +174,7 @@ func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 	if definedParam {
 		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
 	} else {
-		apiDoc.ParamMD = p.buildParamMDByStruct(req)
+		p.parseRequestInfo(apiDoc, reqStructName)
 	}
 
 	if respStructName != "" {
@@ -218,22 +195,22 @@ func (p *DocParser) parseRequestInfo(doc *ApiDocInfo, request interface{}) {
 		req = p.ParseRequest(request)
 	} else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
 		structName, ok := request.(string)
-		if ok {
+		if ok && structName != "" {
 			if structVal, ok := registeredTypes[structName]; ok {
 				req = p.ParseRequest(structVal)
 			}
 		}
 	}
 	// 请求的字段可能也是结构体（如嵌套结构体），需要再次解析
-	req.Fields = p.paeseNestingFields(req.Fields)
+	req.Fields = p.paeseNestingFormFields(req.Fields)
 	// 构造请求markdown内容
 	if req.Name != "" {
 		doc.ParamMD = p.buildParamMDByStruct(req)
 	}
 }
 
-// paeseNestingFields 解析嵌套字段，目前主要是嵌套结构体
-func (p *DocParser) paeseNestingFields(fields []FormField) []FormField {
+// paeseNestingFormFields 解析嵌套字段，目前主要是嵌套结构体
+func (p *DocParser) paeseNestingFormFields(fields []FormField) []FormField {
 	dstFields := make([]FormField, 0)
 	if len(fields) == 0 {
 		return dstFields
@@ -241,7 +218,7 @@ func (p *DocParser) paeseNestingFields(fields []FormField) []FormField {
 	for _, field := range fields {
 		// 暂时只处理嵌套结构体
 		if field.IsStruct && strings.HasSuffix(field.Type, field.Name) {
-			subDstFields := p.paeseNestingFields(field.Struct.Fields)
+			subDstFields := p.paeseNestingFormFields(field.Struct.Fields)
 			if len(subDstFields) > 0 {
 				dstFields = append(dstFields, subDstFields...)
 			}
@@ -548,16 +525,29 @@ func (p *DocParser) ParseStruct(v interface{}) StructInfo {
 		}
 
 		// 处理嵌套结构体
-		if field.Type.Kind() == reflect.Struct {
-			childStruct := p.ParseStruct(field.Type)
+		fieldType := field.Type
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
+			childStruct := p.ParseStruct(fieldType)
 			childStruct.Name = field.Name
 			childStruct.Desc = descTag
 			fieldInf.IsStruct = true
 			fieldInf.Struct = childStruct
+		} else if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
+			elemType := fieldType.Elem()
+			item := createDefaultValue(elemType)
+			if IsStruct(item) {
+				childStruct := p.ParseStruct(elemType)
+				childStruct.Name = field.Name
+				childStruct.Desc = descTag
+				fieldInf.IsStruct = true
+				fieldInf.Struct = childStruct
+			}
 		}
 		structInf.Fields = append(structInf.Fields, fieldInf)
 	}
-
 	return structInf
 }
 
@@ -656,7 +646,8 @@ func (p *DocParser) buildRespMD(resp interface{}) string {
 	respMD += p.buildStructMDBody(obj, "")
 
 	// 添加相应结果示例
-	jsonDemo, err := json.MarshalIndent(resp, "", "    ")
+	respDemoValue := CreateDefaultInstance(reflect.TypeOf(resp))
+	jsonDemo, err := json.MarshalIndent(respDemoValue.Interface(), "", "    ")
 	if err == nil {
 		respMD += fmt.Sprintf("\n\n**示例**\n\n```json\n%s\n```\n", string(jsonDemo))
 	}
@@ -671,6 +662,7 @@ func (p *DocParser) buildStructMDBody(obj StructInfo, fieldPrefix string) string
 		reqParamMD += fmt.Sprintf("|%s|%s|%s|\n", fieldPrefix+field.Tag, field.Type, field.Desc)
 		if field.IsStruct {
 			reqParamMD += p.buildStructMDBody(field.Struct, fieldPrefix+field.Tag+".")
+			continue
 		}
 	}
 	return reqParamMD

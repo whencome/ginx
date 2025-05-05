@@ -112,3 +112,105 @@ func IsFunc(param interface{}) bool {
 	t := reflect.TypeOf(param)
 	return t != nil && t.Kind() == reflect.Func
 }
+
+// IsList 判断给定的对象是否是数组或者切片
+func IsList(i interface{}) bool {
+	if i == nil {
+		return false
+	}
+	value := reflect.ValueOf(i)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
+		return true
+	}
+	return false
+}
+
+// 初始化结构体中的切片/数组字段（补充默认值元素）
+func initSliceOrArrayField(structPtr interface{}, fieldName string) {
+	v := reflect.ValueOf(structPtr).Elem()
+	field := v.FieldByName(fieldName)
+
+	switch field.Kind() {
+	case reflect.Slice:
+		if field.IsNil() {
+			// 创建切片并添加一个默认值元素
+			sliceType := field.Type()
+			elemType := sliceType.Elem()
+			newSlice := reflect.MakeSlice(sliceType, 1, 1)      // 创建长度和容量为1的切片
+			newSlice.Index(0).Set(createDefaultValue(elemType)) // 设置默认值
+			field.Set(newSlice)
+		}
+	case reflect.Array:
+		// 数组始终非nil，直接设置第一个元素
+		elemType := field.Type().Elem()
+		if field.Index(0).IsZero() { // 检查是否未初始化
+			field.Index(0).Set(createDefaultValue(elemType))
+		}
+	}
+}
+
+// 创建类型的默认值
+func createDefaultValue(t reflect.Type) reflect.Value {
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return reflect.ValueOf(0) // 整数默认值
+	case reflect.String:
+		return reflect.ValueOf("") // 字符串默认值
+	case reflect.Struct:
+		return reflect.New(t).Elem() // 结构体默认值（各字段为零值）
+	default:
+		return reflect.Zero(t) // 其他类型返回零值
+	}
+}
+
+// CreateDefaultInstance 创建结构体的默认实例
+func CreateDefaultInstance(typ reflect.Type) reflect.Value {
+	// 处理指针类型
+	if typ.Kind() == reflect.Ptr {
+		elem := CreateDefaultInstance(typ.Elem())
+		ptr := reflect.New(typ.Elem())
+		ptr.Elem().Set(elem)
+		return ptr
+	}
+	// 创建对应类型的零值
+	val := reflect.New(typ).Elem()
+	// 根据不同类型处理
+	switch typ.Kind() {
+	case reflect.Struct:
+		// 递归处理结构体字段
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			if field.IsExported() { // 只处理可导出字段
+				fieldVal := CreateDefaultInstance(field.Type)
+				val.Field(i).Set(fieldVal)
+			}
+		}
+
+	case reflect.Slice:
+		// 创建包含一个元素的切片
+		elemType := typ.Elem()
+		elem := CreateDefaultInstance(elemType)
+		slice := reflect.MakeSlice(typ, 1, 1)
+		slice.Index(0).Set(elem)
+		val.Set(slice)
+
+	case reflect.Array:
+		// 创建数组并初始化第一个元素
+		elemType := typ.Elem()
+		elem := CreateDefaultInstance(elemType)
+		arr := reflect.New(typ).Elem()
+		if arr.Len() > 0 {
+			arr.Index(0).Set(elem)
+		}
+		val.Set(arr)
+
+	// 基础类型会自动初始化为零值
+	default:
+		// 不需要额外处理，reflect.New 已经创建了零值
+	}
+
+	return val
+}
