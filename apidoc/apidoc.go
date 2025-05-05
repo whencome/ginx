@@ -90,25 +90,25 @@ func RegisterStructs(strcutMaps map[string]interface{}) {
 	}
 }
 
-// Parse 解析文档
-// r 请求结构体
-// f 接口方法
-func Parse(r, f interface{}) {
-	if !config.EnableDoc { // 文档未启用
+// WithDoc 添加api文档信息
+func WithDoc(keyvals ...interface{}) {
+	size := len(keyvals)
+	if size == 0 {
 		return
 	}
-	doc := docParser.Parse(r, f)
-	// 忽略标题为空的文档
-	if doc.Name == "" {
-		return
+	var doc *ApiDocInfo
+	if size == 1 {
+		doc = docParser.ParseDocString(keyvals[0].(string))
+	} else {
+		doc = docParser.ParseDocPairs(keyvals...)
 	}
-	doc.Hash = Md5Short(fmt.Sprintf("%s%s", doc.Name, doc.Path))
-	// 添加文档
-	AddDoc(&doc)
+	doc.Hash = Md5Short(fmt.Sprintf("%s/%s/%s", doc.Group, doc.Name, doc.Path))
+	addDoc(doc)
+	return
 }
 
-// AddDoc 添加文档
-func AddDoc(doc *ApiDocInfo) {
+// addDoc 添加文档
+func addDoc(doc *ApiDocInfo) {
 	if doc.Name == "" {
 		return
 	}
@@ -143,34 +143,4 @@ func AddDoc(doc *ApiDocInfo) {
 		g.Docs = append(g.Docs, doc)
 		apiDocs.Groups = append(apiDocs.Groups, g)
 	}
-
-	/*
-	   groupPaths := strings.Split(groupName, "/")
-	   var group *DocGroup = apiDocs
-	   for _, groupPath := range groupPaths {
-	       if group.Groups == nil {
-	           group.Groups = make([]*DocGroup, 0)
-	       } else {
-	           found := false
-	           for _, g := range group.Groups {
-	               if g.Name == groupPath {
-	                   group = g
-	                   found = true
-	                   break
-	               }
-	           }
-	           if !found {
-	               g := &DocGroup{
-	                   Name:   groupPath,
-	                   Sort:   100,
-	                   Docs:   make([]*ApiDocInfo, 0),
-	                   Groups: make([]*DocGroup, 0),
-	               }
-	               group = g
-	           }
-	       }
-	   }
-	   group.Docs = append(group.Docs, doc)
-	*/
-
 }

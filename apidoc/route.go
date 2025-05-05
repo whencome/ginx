@@ -26,6 +26,10 @@ func (ks KVMapSlice) Swap(i, j int)      { ks[i], ks[j] = ks[j], ks[i] }
 type RouterMap map[string][]KVMap
 type DataMap map[string]RouterMap
 
+var docMap = make(map[string]KVMap)
+
+var pkgMap = make(map[string][]string)
+
 var rootPath string
 
 var templateMap = KVMap{
@@ -69,9 +73,9 @@ func RegisterDoc(r *gin.Engine, middlewares ...gin.HandlerFunc) (err error) {
 	if err := initTemplates(); err != nil {
 		return err
 	}
-	// 获取api数据
+
 	dataMap := apiDocs.ToApiData()
-	
+
 	g0 := r.Group("")
 	g0.Use(middlewares...)
 

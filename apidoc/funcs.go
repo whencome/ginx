@@ -107,3 +107,8 @@ func IsStruct(v interface{}) bool {
 	}
 	return false
 }
+
+func IsFunc(param interface{}) bool {
+	t := reflect.TypeOf(param)
+	return t != nil && t.Kind() == reflect.Func
+}

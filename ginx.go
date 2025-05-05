@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/whencome/ginx/apidoc"
 	"github.com/whencome/ginx/log"
 	"github.com/whencome/ginx/validator"
 )
@@ -105,7 +104,6 @@ func UseApiMiddleware(ms ...ApiMiddleware) {
 
 // NewApiHandler create a new gin.HandlerFunc
 func NewApiHandler(r Request, f ApiHandlerFunc, ms ...ApiMiddleware) gin.HandlerFunc {
-	apidoc.Parse(r, f)
 	return func(c *gin.Context) {
 		if f == nil {
 			getApiResponser().Response(c, http.StatusNotImplemented, "service not implemented")

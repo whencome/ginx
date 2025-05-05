@@ -19,14 +19,193 @@ func NewDocParser() *DocParser {
 	return &DocParser{}
 }
 
-// 解析文档
-func (p *DocParser) Parse(r, f interface{}) ApiDocInfo {
-	// 请求
-	reqStruct := p.ParseRequest(r)
-	// 方法
-	methodInfo := p.ParseMethodInfo(f)
-	// 构建文档
-	return p.buildDoc(reqStruct, methodInfo)
+func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
+	apiDoc := &ApiDocInfo{}
+	size := len(keyvals)
+	var request, response interface{}
+	for i := 0; i < size; i += 2 {
+		if i+1 >= size {
+			break
+		}
+		notation, ok := keyvals[i].(string)
+		if !ok {
+			continue
+		}
+		value := keyvals[i+1]
+		switch notation {
+		case "@Markdown":
+			apiDoc.DocMd = value.(string)
+		case "@Summary":
+			apiDoc.Name = value.(string)
+		case "@Description":
+			apiDoc.Description = value.(string)
+		case "@Router":
+			router := value.(string)
+			mStart := strings.Index(router, "[")
+			mEnd := strings.Index(router, "]")
+			var path, methods string
+			if mStart > 0 {
+				path = strings.TrimSpace(router[:mStart])
+				methods = strings.TrimSpace(router[mStart+1 : mEnd])
+			} else {
+				path = strings.TrimSpace(router)
+			}
+			apiDoc.Path = path
+			apiDoc.Method = methods
+		case "@Tags":
+			apiDoc.Group = value.(string)
+		case "@Produce":
+			produce := value.(string)
+			apiDoc.MIME = GetMIMEType(produce)
+		case "@Param":
+			reqParam, ok := p.parseParam(value.(string))
+			if ok {
+				apiDoc.Params = append(apiDoc.Params, reqParam)
+			}
+		case "@Request":
+			request = value
+		case "@Response":
+			response = value
+		}
+	}
+
+	// 解析请求参数
+	if len(apiDoc.Params) > 0 {
+		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
+	} else {
+		var req RequestInfo
+		if IsStruct(request) { // 如果直接传入的结构体，则直接解析
+			req = p.ParseRequest(request)
+		} else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
+			structName, ok := request.(string)
+			if ok {
+				if structVal, ok := registeredTypes[structName]; ok {
+					req = p.ParseRequest(structVal)
+				}
+			}
+		}
+		if req.Name != "" {
+			apiDoc.ParamMD = p.buildParamMDByStruct(req)
+		}
+	}
+
+	// 解析响应结果
+	if IsStruct(response) { // 如果直接传入的结构体，则直接解析
+		apiDoc.RespMD = p.buildRespMD(response)
+	} else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
+		structName, ok := response.(string)
+		if ok {
+			if structVal, ok := registeredTypes[structName]; ok {
+				apiDoc.RespMD = p.buildRespMD(structVal)
+			}
+		}
+	}
+
+	return apiDoc
+}
+
+func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
+	apiDoc := &ApiDocInfo{}
+	// 解析接口文档
+	lines := strings.Split(doc, "\n")
+	openMarkdown := false
+	// 标识是否单独定义了参数，如果是，则不解析结构体
+	definedParam := false
+	// 响应结果
+	respStructName := ""
+	req := RequestInfo{}
+	markdown := bytes.Buffer{}
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if openMarkdown {
+			if strings.HasPrefix(line, "@Markdown") {
+				openMarkdown = false
+				continue
+			} else {
+				markdown.WriteString(line)
+				markdown.WriteString("\n")
+				continue
+			}
+		} else {
+			if strings.HasPrefix(line, "@Markdown") {
+				openMarkdown = !openMarkdown
+				continue
+			}
+			if strings.HasPrefix(line, "@Summary") {
+				apiDoc.Name = strings.TrimSpace(strings.TrimPrefix(line, "@Summary"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Description") {
+				apiDoc.Description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Router") {
+				router := strings.TrimSpace(strings.TrimPrefix(line, "@Router"))
+				mStart := strings.Index(router, "[")
+				mEnd := strings.Index(router, "]")
+				var path, methods string
+				if mStart > 0 {
+					path = strings.TrimSpace(router[:mStart])
+					methods = strings.TrimSpace(router[mStart+1 : mEnd])
+				} else {
+					path = strings.TrimSpace(router)
+				}
+				apiDoc.Path = path
+				apiDoc.Method = methods
+				continue
+			}
+			if strings.HasPrefix(line, "@Tags") {
+				apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
+				continue
+			}
+			if strings.HasPrefix(line, "@Produce") {
+				produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
+				apiDoc.MIME = GetMIMEType(produce)
+				continue
+			}
+			if strings.HasPrefix(line, "@Param") {
+				definedParam = true
+				reqParam, ok := p.parseParam(strings.TrimSpace(strings.TrimPrefix(line, "@Param")))
+				if ok {
+					apiDoc.Params = append(apiDoc.Params, reqParam)
+				}
+				continue
+			}
+			if strings.HasPrefix(line, "@Request") {
+				if req.Name != "" { // 优先使用注册路由时使用的结构体
+					continue
+				}
+				structName := strings.TrimSpace(strings.TrimPrefix(line, "@Request"))
+				if structName == "" {
+					continue
+				}
+				if structVal, ok := registeredTypes[structName]; ok {
+					req = p.ParseRequest(structVal)
+				}
+				continue
+			}
+			if strings.HasPrefix(line, "@Response") {
+				respStructName = strings.TrimSpace(strings.TrimPrefix(line, "@Response"))
+				continue
+			}
+		}
+	}
+
+	if definedParam {
+		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
+	} else {
+		apiDoc.ParamMD = p.buildParamMDByStruct(req)
+	}
+
+	if respStructName != "" {
+		if structVal, ok := registeredTypes[respStructName]; ok {
+			apiDoc.RespMD = p.buildRespMD(structVal)
+		}
+	}
+
+	apiDoc.DocMd = markdown.String()
+
+	return apiDoc
 }
 
 // 获取方法信息
@@ -202,7 +381,12 @@ func (p *DocParser) ParseRequest(v interface{}) RequestInfo {
 	if IsNil(v) {
 		return RequestInfo{}
 	}
-	t := reflect.TypeOf(v)
+	var t reflect.Type
+	if t1, ok := v.(reflect.Type); ok {
+		t = t1
+	} else {
+		t = reflect.TypeOf(v)
+	}
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -269,7 +453,12 @@ func (p *DocParser) ParseStruct(v interface{}) StructInfo {
 	}
 
 	// 获取结构体反射类型
-	t := reflect.TypeOf(v)
+	var t reflect.Type
+	if t1, ok := v.(reflect.Type); ok {
+		t = t1
+	} else {
+		t = reflect.TypeOf(v)
+	}
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -319,109 +508,6 @@ func (p *DocParser) ParseStruct(v interface{}) StructInfo {
 	}
 
 	return structInf
-}
-
-// buildDoc 构建文档
-func (p *DocParser) buildDoc(req RequestInfo, method MethodInfo) ApiDocInfo {
-	apiDoc := ApiDocInfo{}
-	// 解析接口文档
-	funcComment := strings.TrimSpace(method.Comment)
-	lines := strings.Split(funcComment, "\n")
-	openMarkdown := false
-	// 标识是否单独定义了参数，如果是，则不解析结构体
-	definedParam := false
-	// 响应结果
-	respStructName := ""
-	markdown := bytes.Buffer{}
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if openMarkdown {
-			if strings.HasPrefix(line, "@Markdown") {
-				openMarkdown = false
-				continue
-			} else {
-				markdown.WriteString(line)
-				markdown.WriteString("\n")
-				continue
-			}
-		} else {
-			if strings.HasPrefix(line, "@Markdown") {
-				openMarkdown = !openMarkdown
-				continue
-			}
-			if strings.HasPrefix(line, "@Summary") {
-				apiDoc.Name = strings.TrimSpace(strings.TrimPrefix(line, "@Summary"))
-				continue
-			}
-			if strings.HasPrefix(line, "@Description") {
-				apiDoc.Description = strings.TrimSpace(strings.TrimPrefix(line, "@Description"))
-				continue
-			}
-			if strings.HasPrefix(line, "@Router") {
-				router := strings.TrimSpace(strings.TrimPrefix(line, "@Router"))
-				mStart := strings.Index(router, "[")
-				mEnd := strings.Index(router, "]")
-				var path, methods string
-				if mStart > 0 {
-					path = strings.TrimSpace(router[:mStart])
-					methods = strings.TrimSpace(router[mStart+1 : mEnd])
-				} else {
-					path = strings.TrimSpace(router)
-				}
-				apiDoc.Path = path
-				apiDoc.Method = methods
-				continue
-			}
-			if strings.HasPrefix(line, "@Tags") {
-				apiDoc.Group = strings.TrimSpace(strings.TrimPrefix(line, "@Tags"))
-				continue
-			}
-			if strings.HasPrefix(line, "@Produce") {
-				produce := strings.TrimSpace(strings.TrimPrefix(line, "@Produce"))
-				apiDoc.MIME = GetMIMEType(produce)
-				continue
-			}
-			if strings.HasPrefix(line, "@Param") {
-				definedParam = true
-				reqParam, ok := p.parseParam(strings.TrimSpace(strings.TrimPrefix(line, "@Param")))
-				if ok {
-					apiDoc.Params = append(apiDoc.Params, reqParam)
-				}
-				continue
-			}
-			if strings.HasPrefix(line, "@Request") {
-				if req.Name != "" { // 优先使用注册路由时使用的结构体
-					continue
-				}
-				structName := strings.TrimSpace(strings.TrimPrefix(line, "@Request"))
-				if structName == "" {
-					continue
-				}
-				if structVal, ok := registeredTypes[structName]; ok {
-					req = p.ParseRequest(structVal)
-				}
-				continue
-			}
-			if strings.HasPrefix(line, "@Response") {
-				respStructName = strings.TrimSpace(strings.TrimPrefix(line, "@Response"))
-				continue
-			}
-		}
-	}
-	if definedParam {
-		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
-	} else {
-		apiDoc.ParamMD = p.buildParamMDByStruct(req)
-	}
-
-	if respStructName != "" {
-		apiDoc.RespMD = p.buildRespMDByStruct(respStructName)
-	}
-
-	// 解析接口内容为html
-	apiDoc.DocMd = markdown.String()
-
-	return apiDoc
 }
 
 // parseParam 解析参数
@@ -502,31 +588,24 @@ func (p *DocParser) buildParamMDByStruct(req RequestInfo) string {
 	return reqParamMD
 }
 
-// buildRespMDByStruct 根据注册的结构体（structName）解析响应结果内容
-func (p *DocParser) buildRespMDByStruct(structName string) string {
-	// 注册名称为空或者未找到结构体，不予解析
-	if structName == "" {
+// buildRespMD 解析响应结果
+func (p *DocParser) buildRespMD(resp interface{}) string {
+	if IsNil(resp) {
 		return ""
 	}
-	structVal, ok := registeredTypes[structName]
-	if !ok {
-		return ""
-	}
-	// 解析响应结构体对象
-	obj := p.ParseStruct(structVal)
-	// 解析为markdown内容
-	respMD := ""
+	obj := p.ParseStruct(resp)
 	if obj.Name == "" {
-		return respMD
+		return ""
 	}
-	respMD += `
+	// 解析为markdown内容
+	respMD := `
 |参数名|类型|说明|
 |:----|:----|----|
 `
-	respMD += p.buildStructMD(obj, "")
+	respMD += p.buildStructMDBody(obj, "")
 
 	// 添加相应结果示例
-	jsonDemo, err := json.MarshalIndent(structVal, "", "    ")
+	jsonDemo, err := json.MarshalIndent(resp, "", "    ")
 	if err == nil {
 		respMD += fmt.Sprintf("\n\n**示例**\n\n```json\n%s\n```\n", string(jsonDemo))
 	}
@@ -534,13 +613,13 @@ func (p *DocParser) buildRespMDByStruct(structName string) string {
 	return respMD
 }
 
-// buildStructMD 构造结构体markdown内容，主要用于响应结果解析
-func (p *DocParser) buildStructMD(obj StructInfo, fieldPrefix string) string {
+// buildStructMDBody 构造结构体markdown内容，主要用于响应结果解析
+func (p *DocParser) buildStructMDBody(obj StructInfo, fieldPrefix string) string {
 	reqParamMD := ""
 	for _, field := range obj.Fields {
 		reqParamMD += fmt.Sprintf("|%s|%s|%s|\n", fieldPrefix+field.Tag, field.Type, field.Desc)
 		if field.IsStruct {
-			reqParamMD += p.buildStructMD(field.Struct, fieldPrefix+field.Tag+".")
+			reqParamMD += p.buildStructMDBody(field.Struct, fieldPrefix+field.Tag+".")
 		}
 	}
 	return reqParamMD

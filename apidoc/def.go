@@ -126,7 +126,7 @@ type DocGroup struct {
 }
 
 // ToApiData 将文档分组转换为api数据
-func (dg *DocGroup) ToApiData() DataMap {
+func (dg DocGroup) ToApiData() DataMap {
 	docMap := make(DataMap)
 	// 默认分组
 	defaulGroup := &DocGroup{
