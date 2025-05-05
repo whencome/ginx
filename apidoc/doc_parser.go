@@ -19,6 +19,7 @@ func NewDocParser() *DocParser {
 	return &DocParser{}
 }
 
+// ParseDocPairs 根据文档键值对解析文档信息
 func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
 	apiDoc := &ApiDocInfo{}
 	size := len(keyvals)
@@ -73,20 +74,21 @@ func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
 	if len(apiDoc.Params) > 0 {
 		apiDoc.ParamMD = p.buildParamMDByParams(apiDoc.Params)
 	} else {
-		var req RequestInfo
-		if IsStruct(request) { // 如果直接传入的结构体，则直接解析
-			req = p.ParseRequest(request)
-		} else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
-			structName, ok := request.(string)
-			if ok {
-				if structVal, ok := registeredTypes[structName]; ok {
-					req = p.ParseRequest(structVal)
-				}
-			}
-		}
-		if req.Name != "" {
-			apiDoc.ParamMD = p.buildParamMDByStruct(req)
-		}
+		p.parseRequestInfo(apiDoc, request)
+		// var req RequestInfo
+		// if IsStruct(request) { // 如果直接传入的结构体，则直接解析
+		// 	req = p.ParseRequest(request)
+		// } else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
+		// 	structName, ok := request.(string)
+		// 	if ok {
+		// 		if structVal, ok := registeredTypes[structName]; ok {
+		// 			req = p.ParseRequest(structVal)
+		// 		}
+		// 	}
+		// }
+		// if req.Name != "" {
+		// 	apiDoc.ParamMD = p.buildParamMDByStruct(req)
+		// }
 	}
 
 	// 解析响应结果
@@ -104,6 +106,7 @@ func (p *DocParser) ParseDocPairs(keyvals ...interface{}) *ApiDocInfo {
 	return apiDoc
 }
 
+// ParseDocString 根据文档字符串解析文档信息
 func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 	apiDoc := &ApiDocInfo{}
 	// 解析接口文档
@@ -206,6 +209,47 @@ func (p *DocParser) ParseDocString(doc string) *ApiDocInfo {
 	apiDoc.DocMd = markdown.String()
 
 	return apiDoc
+}
+
+// parseRequestInfo 解析请求信息
+func (p *DocParser) parseRequestInfo(doc *ApiDocInfo, request interface{}) {
+	var req RequestInfo
+	if IsStruct(request) { // 如果直接传入的结构体，则直接解析
+		req = p.ParseRequest(request)
+	} else { // 如果是结构体名称，则从注册的struct中获取，此方式需要提前注册结构体
+		structName, ok := request.(string)
+		if ok {
+			if structVal, ok := registeredTypes[structName]; ok {
+				req = p.ParseRequest(structVal)
+			}
+		}
+	}
+	// 请求的字段可能也是结构体（如嵌套结构体），需要再次解析
+	req.Fields = p.paeseNestingFields(req.Fields)
+	// 构造请求markdown内容
+	if req.Name != "" {
+		doc.ParamMD = p.buildParamMDByStruct(req)
+	}
+}
+
+// paeseNestingFields 解析嵌套字段，目前主要是嵌套结构体
+func (p *DocParser) paeseNestingFields(fields []FormField) []FormField {
+	dstFields := make([]FormField, 0)
+	if len(fields) == 0 {
+		return dstFields
+	}
+	for _, field := range fields {
+		// 暂时只处理嵌套结构体
+		if field.IsStruct && strings.HasSuffix(field.Type, field.Name) {
+			subDstFields := p.paeseNestingFields(field.Struct.Fields)
+			if len(subDstFields) > 0 {
+				dstFields = append(dstFields, subDstFields...)
+			}
+		} else {
+			dstFields = append(dstFields, field)
+		}
+	}
+	return dstFields
 }
 
 // 获取方法信息
@@ -406,6 +450,9 @@ func (p *DocParser) ParseRequest(v interface{}) RequestInfo {
 		field := t.Field(i)
 		// 显示字段名
 		showFieldName := field.Tag.Get("form")
+		if strings.Contains(showFieldName, ",") {
+			showFieldName = showFieldName[0:strings.Index(showFieldName, ",")]
+		}
 		if showFieldName == "" {
 			showFieldName = field.Name
 		}
@@ -432,7 +479,11 @@ func (p *DocParser) ParseRequest(v interface{}) RequestInfo {
 		}
 
 		// 处理嵌套结构体
-		if field.Type.Kind() == reflect.Struct {
+		fieldType := field.Type
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
 			childStruct := p.ParseRequest(field.Type)
 			childStruct.Name = field.Name
 			childStruct.Desc = fieldDesc
