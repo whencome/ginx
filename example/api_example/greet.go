@@ -30,15 +30,6 @@ type GreetResponse struct {
 	Message string `json:"message"` // 打招呼结果
 }
 
-// @Summary 打招呼
-// @Description 用于向指定的对象打招呼
-// @Produce json
-// @Markdown
-// ### 测试内容
-// * string: 打招呼结果
-// * error: 错误信息
-// @Markdown
-// @Router	/greet [post]
 func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	// a type convert was needed
 	req := r.(*GreetRequest)
@@ -48,23 +39,6 @@ func GreetLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	return fmt.Sprintf("hello %s", req.Name), nil
 }
 
-// 向别人说好
-// @Summary SayHi
-// @Description SayHi测试，SayHi to everyone
-// @Produce text
-// @Tags 问候
-// @Markdown
-// ### 返回内容
-//
-// ```json
-//
-//	{
-//	    "message": "hello %s"
-//	}
-//
-// ```
-// @Markdown
-// @Router	/greet/sayhi [get]
 func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	// a type convert was needed
 	req := r.(*GreetRequest)
@@ -74,31 +48,6 @@ func SayHiLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	return fmt.Sprintf("hello %s", req.Name), nil
 }
 
-// 显示当前时间
-// @Summary Show Time
-// @Description 显示当前时间
-// @Produce json
-// @Param timezone string false 时区
-// @Response TimeResponse
-// @Markdown
-// ### 返回内容
-//
-// ```json
-//
-//	{
-//	    "message": "2005-01-02"
-//	}
-//
-// ```
-//
-// **返回值说明**
-//
-// | 字段 | 类型 | 说明 |
-// | --- | --- | --- |
-// | message | string | 当前时间 |
-//
-// @Markdown
-// @Router	/time [get]
 func TimeLogic(c *gin.Context, r ginx.Request) (ginx.Response, error) {
 	return "2005-01-02", nil
 }
