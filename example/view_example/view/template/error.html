@@ -22,11 +22,11 @@
         </ul>
         {{end}}
         {{/*show cookie info*/}}
-        {{$cookieCount := len .Cookies}}
+        {{$cookieCount := len .Ctx.Request.Cookies}}
         {{if gt $cookieCount 0}}
         <p>Cookies:</p>
         <ul>
-            {{range $i, $c := .Cookies}}
+            {{range $c := .Ctx.Request.Cookies}}
             <li><strong>{{$c.Name}}</strong>:{{$c.Value}}</li>
             {{end}}
         </ul>

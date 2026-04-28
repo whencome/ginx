@@ -19,7 +19,9 @@ const (
 
 // UseLogger register a global logger
 func UseLogger(l log.Logger) {
-	log.Use(l)
+	if l != nil {
+		log.Use(l)
+	}
 }
 
 // apiResponser responser for api
@@ -220,7 +222,7 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc, ms ...PageM
 		var err error
 		// get middlewares
 		middlewares := make([]PageMiddleware, 0)
-		if len(apiMiddlewares) > 0 {
+		if len(pageMiddlewares) > 0 {
 			middlewares = append(middlewares, pageMiddlewares...)
 		}
 		if len(ms) > 0 {
@@ -244,26 +246,23 @@ func NewPageHandler(v *View, t string, r Request, f PageHandlerFunc, ms ...PageM
 	}
 }
 
-// Wait 信号监听，当监听到退出信号时，执行资源释放函数，并退出程序
-// f 程序退出前的资源释放方法
+// Wait signal listener, execute resource release function when exit signal received, then exit program
+// releaseFunc resource release method before program exit
 func Wait(releaseFunc func()) {
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	for {
-		s := <-sigChan
-		switch s {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP:
-			log.Infof("recv exit signal...")
-			// 释放相关资源
-			if releaseFunc != nil {
-				log.Infof("execute release func...")
-				releaseFunc()
-			}
-			// 等待1秒再退出
-			time.Sleep(1 * time.Second)
-			log.Infof("exit app...")
-			os.Exit(0)
-			return
+	s := <-sigChan
+	switch s {
+	case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP:
+		log.Infof("recv exit signal: %v", s)
+		// release resources
+		if releaseFunc != nil {
+			log.Infof("execute release func...")
+			releaseFunc()
 		}
+		// wait 1 second before exit
+		time.Sleep(1 * time.Second)
+		log.Infof("exit app...")
+		os.Exit(0)
 	}
 }

@@ -57,6 +57,9 @@ func (b *Bucket) UseMiddlewares(ms ...gin.HandlerFunc) {
 }
 
 func (b *Bucket) AddHandler(h Handler) {
+	if h == nil {
+		return
+	}
 	if b.handlers == nil {
 		b.handlers = make([]Handler, 0)
 	}
@@ -64,6 +67,9 @@ func (b *Bucket) AddHandler(h Handler) {
 }
 
 func (b *Bucket) AddHandlers(hs []Handler) {
+	if len(hs) == 0 {
+		return
+	}
 	if b.handlers == nil {
 		b.handlers = make([]Handler, 0)
 	}
@@ -71,6 +77,9 @@ func (b *Bucket) AddHandlers(hs []Handler) {
 }
 
 func (b *Bucket) AddBucket(b1 bucketer) {
+	if b1 == nil {
+		return
+	}
 	if b.buckets == nil {
 		b.buckets = make([]bucketer, 0)
 	}
@@ -78,6 +87,9 @@ func (b *Bucket) AddBucket(b1 bucketer) {
 }
 
 func (b *Bucket) AddBuckets(bs []bucketer) {
+	if len(bs) == 0 {
+		return
+	}
 	if b.buckets == nil {
 		b.buckets = make([]bucketer, 0)
 	}
